@@ -174,7 +174,7 @@ defmodule CloudOS.Fleet.Agents.EtcdCluster.Tests do
 
   test "deploy_units - teardown previous units" do
     :meck.expect(FleetApi.Etcd, :list_units, fn token -> {:ok, [Map.put(%{}, "name", "test_unit")]} end)
-    :meck.expect(FleetApi.Etcd, :list_machines, fn token -> [%{}] end)
+    :meck.expect(FleetApi.Etcd, :list_machines, fn token -> {:ok, [%{}]} end)
 
     :meck.expect(SystemdUnit, :create, fn resolved_unit -> {:ok, %{}} end)
     :meck.expect(SystemdUnit, :create, fn resolved_unit -> {:ok, %{}} end)

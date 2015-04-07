@@ -148,7 +148,7 @@ defmodule CloudOS.Fleet.Agents.EtcdCluster do
   def get_units_state(cluster) do
     case cluster
           |> fleetapi_pid_from_cluster
-          |> FleetApi.list_unit_states do
+          |> FleetApi.Etcd.list_unit_states do
       {:ok, states} ->
         states
       {:error, reason} ->
