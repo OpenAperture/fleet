@@ -1,3 +1,5 @@
+require Logger
+
 defmodule CloudOS.Fleet.Agents.FleetAPIInstances do
     
     def start_link(_opts \\ []) do
@@ -9,6 +11,7 @@ defmodule CloudOS.Fleet.Agents.FleetAPIInstances do
           case map[etcd_token] do
             nil -> 
                 {:ok, pid} = FleetApi.Etcd.start_link(etcd_token)
+                Logger.debug "created new fleet api instance for token #{etcd_token}"
                 {pid, Map.put(map, etcd_token, pid)}
             pid ->
                 {pid, map}
