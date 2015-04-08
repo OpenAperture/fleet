@@ -1,8 +1,8 @@
-defmodule CloudOS.Fleet.Mixfile do
+defmodule OpenAperture.Fleet.Mixfile do
   use Mix.Project
 
   def project do
-    [app: :cloudos_fleet,
+    [app: :openaperture_fleet,
      version: "0.0.1",
      elixir: "~> 1.0",
      deps: deps]
@@ -13,7 +13,7 @@ defmodule CloudOS.Fleet.Mixfile do
   # Type `mix help compile.app` for more information
   def application do
     [applications: [:logger, :fleet_api],
-     mod: {CloudOS.Fleet, []}]
+     mod: {OpenAperture.Fleet, []}]
   end
 
   # Dependencies can be Hex packages:

@@ -1,10 +1,10 @@
 require Logger
 
-defmodule CloudOS.Fleet do
+defmodule OpenAperture.Fleet do
   use Supervisor
 
   def start(_type, _args) do
-    Logger.info("Starting CloudOS FleetAPIInstances supervisor...")
+    Logger.info("Starting OpenAperture Fleet supervisor...")
     :supervisor.start_link(__MODULE__, [])
   end
 
@@ -13,7 +13,7 @@ defmodule CloudOS.Fleet do
 
     children = [
       # Define workers and child supervisors to be supervised
-      worker(CloudOS.Fleet.Agents.FleetAPIInstances, []),
+      worker(OpenAperture.Fleet.Agents.FleetAPIInstances, []),
     ]
 
     opts = [strategy: :one_for_one, name: __MODULE__]

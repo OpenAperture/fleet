@@ -1,8 +1,8 @@
-defmodule CloudOS.Fleet.Agents.EtcdCluster.Tests do
+defmodule OpenAperture.Fleet.Agents.EtcdCluster.Tests do
   use ExUnit.Case
 
-  alias CloudOS.Fleet.Agents.EtcdCluster
-  alias CloudOS.Fleet.Agents.SystemdUnit
+  alias OpenAperture.Fleet.Agents.EtcdCluster
+  alias OpenAperture.Fleet.Agents.SystemdUnit
 
   # =======================
   # get_hosts Tests

@@ -11,8 +11,8 @@
 #
 require Logger
 
-defmodule CloudOS.Fleet.Agents.SystemdUnit do
-  alias CloudOS.Fleet.Agents.FleetAPIInstances
+defmodule OpenAperture.Fleet.Agents.SystemdUnit do
+  alias OpenAperture.Fleet.Agents.FleetAPIInstances
   alias FleetApi.Etcd
   @doc """
   Creates a `GenServer` representing a systemd Unit.
@@ -55,7 +55,7 @@ defmodule CloudOS.Fleet.Agents.SystemdUnit do
   def create!(options) do
     case create(options) do
       {:ok, cluster} -> cluster
-      {:error, reason} -> raise "Failed to create CloudOS.Fleet.Agents.SystemdUnit:  #{reason}"
+      {:error, reason} -> raise "Failed to create OpenAperture.Fleet.Agents.SystemdUnit:  #{reason}"
     end
   end  
 
@@ -410,12 +410,12 @@ defmodule CloudOS.Fleet.Agents.SystemdUnit do
   # 
   @spec execute_journal_request(List, Map, term) :: {:ok, String.t(), String.t()}| {:ok, String.t(), String.t()}
   def execute_journal_request([requested_host|remaining_hosts], unit_options, verify_result) do
-    File.mkdir_p("/tmp/cloudos_build_server/systemd_unit")
-    stdout_file = "/tmp/cloudos_build_server/systemd_unit/#{UUID.uuid1()}.log"
-    stderr_file = "/tmp/cloudos_build_server/systemd_unit/#{UUID.uuid1()}.log"
+    File.mkdir_p("#{Application.get_env(:openaperture_fleet, :tmpdir)}/systemd_unit")
+    stdout_file = "#{Application.get_env(:openaperture_fleet, :tmpdir)}/systemd_unit/#{UUID.uuid1()}.log"
+    stderr_file = "#{Application.get_env(:openaperture_fleet, :tmpdir)}/systemd_unit/#{UUID.uuid1()}.log"
 
     journal_script = EEx.eval_file("#{System.cwd!()}/templates/fleetctl-journal.sh.eex", [host_ip: requested_host["primaryIP"], unit_name: unit_options["name"], verify_result: verify_result])
-    journal_script_file = "/tmp/cloudos_build_server/systemd_unit/#{UUID.uuid1()}.sh"
+    journal_script_file = "#{Application.get_env(:openaperture_fleet, :tmpdir)}/systemd_unit/#{UUID.uuid1()}.sh"
     File.write!(journal_script_file, journal_script)
 
     resolved_cmd = "bash #{journal_script_file} 2> #{stderr_file} > #{stdout_file} < /dev/null"

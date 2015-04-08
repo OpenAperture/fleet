@@ -1,7 +1,7 @@
-defmodule CloudOS.Fleet.Agents.SystemdUnit.Tests do
+defmodule OpenAperture.Fleet.Agents.SystemdUnit.Tests do
   use ExUnit.Case
 
-  alias CloudOS.Fleet.Agents.SystemdUnit
+  alias OpenAperture.Fleet.Agents.SystemdUnit
 
   # =======================
   # set_etcd_token Tests

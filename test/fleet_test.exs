@@ -1,4 +1,4 @@
-defmodule CloudOS.FleetTest do
+defmodule OpenAperture.FleetTest do
   use ExUnit.Case
 
   test "the truth" do

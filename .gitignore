@@ -3,4 +3,4 @@
 erl_crash.dump
 *.ez
 mix.lock
-cloudos_fleet.sublime-workspace
+fleet.sublime-workspace
