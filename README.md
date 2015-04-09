@@ -1,4 +1,4 @@
 OpenAperture.Fleet
 =============
 
-[![Build Status](https://semaphoreci.com/api/v1/projects/617de379-eb00-460f-89ea-82e297abe711/393243/badge.svg)](https://semaphoreci.com/perceptive/openaperture_fleet)
+[![Build Status](https://semaphoreci.com/api/v1/projects/5d1f35d3-2eaf-48d6-bcf3-59bc64474541/394651/badge.svg)](https://semaphoreci.com/perceptive/fleet)
