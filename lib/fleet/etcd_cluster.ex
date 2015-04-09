@@ -11,9 +11,9 @@
 #
 require Logger
 
-defmodule OpenAperture.Fleet.Agents.EtcdCluster do
-  alias OpenAperture.Fleet.Agents.SystemdUnit
-  alias OpenAperture.Fleet.Agents.FleetAPIInstances
+defmodule OpenAperture.Fleet.EtcdCluster do
+  alias OpenAperture.Fleet.SystemdUnit
+  alias OpenAperture.Fleet.FleetAPIInstances
 
   @doc """
   Creates a `GenServer` representing an etcd cluster.
@@ -57,7 +57,7 @@ defmodule OpenAperture.Fleet.Agents.EtcdCluster do
   def create!(etcd_token) do
     case create(etcd_token) do
       {:ok, cluster} -> cluster
-      {:error, reason} -> raise "Failed to create OpenAperture.Fleet.Agents.EtcdCluster:  #{reason}"
+      {:error, reason} -> raise "Failed to create OpenAperture.Fleet.EtcdCluster:  #{reason}"
     end
   end
 

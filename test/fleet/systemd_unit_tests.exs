@@ -1,7 +1,7 @@
-defmodule OpenAperture.Fleet.Agents.SystemdUnit.Tests do
+defmodule OpenAperture.Fleet.SystemdUnit.Tests do
   use ExUnit.Case
 
-  alias OpenAperture.Fleet.Agents.SystemdUnit
+  alias OpenAperture.Fleet.SystemdUnit
 
   # =======================
   # set_etcd_token Tests

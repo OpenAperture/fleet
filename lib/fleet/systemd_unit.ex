@@ -11,8 +11,8 @@
 #
 require Logger
 
-defmodule OpenAperture.Fleet.Agents.SystemdUnit do
-  alias OpenAperture.Fleet.Agents.FleetAPIInstances
+defmodule OpenAperture.Fleet.SystemdUnit do
+  alias OpenAperture.Fleet.FleetAPIInstances
   alias FleetApi.Etcd
   @doc """
   Creates a `GenServer` representing a systemd Unit.
@@ -55,7 +55,7 @@ defmodule OpenAperture.Fleet.Agents.SystemdUnit do
   def create!(options) do
     case create(options) do
       {:ok, cluster} -> cluster
-      {:error, reason} -> raise "Failed to create OpenAperture.Fleet.Agents.SystemdUnit:  #{reason}"
+      {:error, reason} -> raise "Failed to create OpenAperture.Fleet.SystemdUnit:  #{reason}"
     end
   end  
 

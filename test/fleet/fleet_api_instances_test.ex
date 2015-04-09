@@ -1,6 +1,6 @@
-defmodule OpenAperture.Fleet.Agents.FleetAPIInstances.Tests do
+defmodule OpenAperture.Fleet.FleetAPIInstances.Tests do
   use ExUnit.Case
-  alias OpenAperture.Fleet.Agents.FleetAPIInstances
+  alias OpenAperture.Fleet.FleetAPIInstances
 
   test "caches pid" do
   	pid1 = FleetAPIInstances.get_instance("my_token")
