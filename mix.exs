@@ -27,6 +27,9 @@ defmodule OpenAperture.Fleet.Mixfile do
   # Type `mix help deps` for more examples and options
   defp deps do
     [
+      {:ex_doc, github: "elixir-lang/ex_doc", only: [:test]},
+      {:markdown, github: "devinus/markdown", only: [:test]},
+            
       {:fleet_api, "~> 0.0.4"},
       {:uuid, "~> 0.1.5" },
       
