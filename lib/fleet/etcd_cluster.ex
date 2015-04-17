@@ -1,14 +1,3 @@
-#
-# == etcd_cluster.ex
-#
-# This module contains the logic for managing an etcd cluster
-#
-# == Contact
-#
-# Author::    Trantor (trantordevonly@perceptivesoftware.com)
-# Copyright:: 2014 Lexmark International Technology S.A.  All rights reserved.
-# License::   n/a
-#
 require Logger
 
 defmodule OpenAperture.Fleet.EtcdCluster do

@@ -1,14 +1,3 @@
-#
-# == systemd_unit.ex
-#
-# This module contains the logic for manipulating systemd units
-#
-# == Contact
-#
-# Author::    Trantor (trantordevonly@perceptivesoftware.com)
-# Copyright:: 2014 Lexmark International Technology S.A.  All rights reserved.
-# License::   n/a
-#
 require Logger
 
 defmodule OpenAperture.Fleet.SystemdUnit do
