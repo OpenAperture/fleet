@@ -1,0 +1,21 @@
+# OpenAperture Deployment Fleet serivce file.
+#
+# This File is used to deploy the test-service application via Fleet.
+#
+#
+[Unit]
+Description=Test Service
+After=docker.service
+Requires=docker.service
+
+[Service]
+TimeoutStartSec=0
+User=root
+ExecStartPre=-/usr/bin/docker kill test_service-%i
+ExecStartPre=-/usr/bin/docker rm test_service-%i
+ExecStartPre=/usr/bin/docker pull testcloud/test-service
+ExecStart=/usr/bin/docker run --name test_service-%i -e TEST_SERVICE_DATABASE=test_service_production -e TEST_SERVICE_DATABASE_HOST=localhost:2345 -e webapp_environment=staging -p 9000:8080 testcloud/test-service
+ExecStop=/usr/bin/docker stop test_service-%i
+
+[X-Fleet]
+X-Conflicts=test_service@*.service
