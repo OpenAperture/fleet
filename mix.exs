@@ -28,7 +28,7 @@ defmodule OpenAperture.Fleet.Mixfile do
   defp deps do
     [
       {:ex_doc, github: "elixir-lang/ex_doc", only: [:test]},
-      {:markdown, github: "devinus/markdown", only: [:test]},
+      {:earmark, github: "pragdave/earmark", tag: "v0.1.8", only: [:test]},
             
       {:fleet_api, "~> 0.0.4"},
       {:uuid, "~> 0.1.5" },
