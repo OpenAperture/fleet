@@ -1,6 +1,6 @@
 require Logger
 
-defmodule OpenAperture.Fleet.FleetAPIInstances do
+defmodule OpenAperture.Fleet.FleetApiInstances do
     
     def start_link(_opts \\ []) do
         Agent.start_link(fn -> %{} end, name: __MODULE__)

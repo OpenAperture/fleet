@@ -1,169 +1,163 @@
 require Logger
 
 defmodule OpenAperture.Fleet.SystemdUnit do
-  alias OpenAperture.Fleet.FleetAPIInstances
-  alias FleetApi.Etcd
-  @doc """
-  Creates a `GenServer` representing a systemd Unit.
+  alias OpenAperture.Fleet.SystemdUnit
+  alias OpenAperture.Fleet.FleetApiInstances
 
-  ## Options
-
-  The `options` option defines the Map of configuration options that should be 
-  passed to systemd.
-
-  ## Return values
-
-  If the server is successfully created and initialized, the function returns
-  `{:ok, pid}`, where pid is the pid of the server. If there already exists a
-  process with the specified server name, the function returns
-  `{:error, {:already_started, pid}}` with the pid of that process.
-
-  If the `init/1` callback fails with `reason`, the function returns
-  `{:error, reason}`. Otherwise, if it returns `{:stop, reason}`
-  or `:ignore`, the process is terminated and the function returns
-  `{:error, reason}` or `:ignore`, respectively.
+  @moduledoc """
+  This module contains logic to interact with SystemdUnit modules
   """
-  @spec create(Map) :: {:ok, pid} | {:error, String.t()}
-  def create(options) do
-    Agent.start_link(fn -> options end)
+
+  @type t :: %__MODULE__{}
+  
+  defstruct name: nil,
+            options: nil,
+            etcd_token: nil, 
+            dst_port: nil, 
+            desiredState: nil, 
+            currentState: nil, 
+            machineID: nil, 
+            systemdLoadState: nil, 
+            systemdActiveState: nil, 
+            systemdSubState: nil
+
+  @spec get_fleet_api(String.t) :: pid
+  defp get_fleet_api(etcd_token) do
+    FleetApiInstances.get_instance(etcd_token)
   end
 
-  @doc """
-  Method to generate a new EtcdCluster agent
-
-  ## Options
-
-  The `options` option defines the Map of configuration options that should be 
-  passed to systemd.
-
-  ## Return Values
-
-  pid
-  """
-  @spec create!(String.t()) :: pid
-  def create!(options) do
-    case create(options) do
-      {:ok, cluster} -> cluster
-      {:error, reason} -> raise "Failed to create OpenAperture.Fleet.SystemdUnit:  #{reason}"
+  @spec build_unit(String.t, FleetApi.Unit.t, FleetApi.UnitState.t) :: SystemdUnit.t
+  defp build_unit(etcd_token, unit, unit_state) do
+    systemd_unit = %SystemdUnit{
+      etcd_token: etcd_token
+    }
+    systemd_unit = if unit == nil do
+      systemd_unit
+    else
+      %{systemd_unit | 
+        name: unit.name,
+        options: unit.options,
+        desiredState: unit.desiredState,
+        currentState: unit.currentState,        
+        machineID: unit.machineID,
+      }
     end
-  end  
+           
+    systemd_unit = if unit_state == nil do
+      systemd_unit
+    else
+      %{systemd_unit | 
+        systemdLoadState: unit_state.systemdLoadState,
+        systemdActiveState: unit_state.systemdActiveState,
+        systemdSubState: unit_state.systemdSubState
+      }
+    end
+
+    systemd_unit    
+  end
 
   @doc """
-  Method to store the associated etcd_token
+  Method to convert a FleetApi.Unit into a SystemdUnit
   
   ## Options
   
-  The `unit` option define the Systemd PID
-   
   The `etcd_token` provides the etcd token to connect to fleet
-  
-  """
-  @spec set_etcd_token(pid, String.t()) :: term
-  def set_etcd_token(unit, etcd_token) do
-    unit_options = Agent.get(unit, fn options -> options end)
-    new_options = Map.merge(unit_options, %{etcd_token: etcd_token})
-    new_options = Map.merge(new_options, %{"etcd_token": etcd_token})
 
-    Agent.update(unit, fn _ -> new_options end)
-  end
-
-  @doc """
-  Method to store the assigned port
+  The `unit` option define the FleetApi.Unit
   
-  ## Options
-  
-  The `unit` option define the Systemd PID
-   
-  The `port` provides the assigned integer port
-  
-  """
-  @spec set_assigned_port(pid, Integer) :: term
-  def set_assigned_port(unit, port) do
-    unit_options = Agent.get(unit, fn options -> options end)
-    new_options = Map.merge(unit_options, %{dst_port: port})
-    new_options = Map.merge(new_options, %{"dst_port": port})
-
-    Agent.update(unit, fn _ -> new_options end)
-  end
-
-  @doc """
-  Method to retrieve the assigned port
-  
-  ## Options
-  
-  The `unit` option define the Systemd PID
-   
   ## Return Value
 
-  The assigned integer port
+  SystemdUnit
   
   """
-  @spec get_assigned_port(pid) :: term
-  def get_assigned_port(unit) do
-    unit_options = Agent.get(unit, fn options -> options end)
-    unit_options[:dst_port]
+  @spec from_fleet_unit(String.t(), FleetApi.Unit) :: SystemdUnit.t
+  def from_fleet_unit(etcd_token, unit) do
+    build_unit(etcd_token, unit, nil)
   end
 
   @doc """
-  Method to refresh the state of the Unit from the cluster
+  Method to retrieve the current SystemdUnit for a unit on the cluster
+  
+  ## Options
+  
+  The `etcd_token` provides the etcd token to connect to fleet
+  
+  ## Return Value
+
+  List of SystemdUnit.t
+  """
+  @spec get_units(String.t()) :: List
+  def get_units(etcd_token) do
+    Logger.debug("Retrieving units on cluster #{etcd_token}...")
+    api = get_fleet_api(etcd_token)
+    units = case FleetApi.Etcd.list_units(api) do
+      {:ok, units} -> units
+      {:error, reason} -> 
+        Logger.error("Failed to retrieve units on cluster #{etcd_token}:  #{inspect reason}")
+        nil
+    end
+
+    if units == nil do
+      nil
+    else
+      unit_states = case FleetApi.Etcd.list_unit_states(api) do
+        {:ok, unit_states} -> unit_states
+        {:error, reason} -> 
+          Logger.error("Failed to retrieve unit states on cluster #{etcd_token}:  #{inspect reason}")
+          nil
+      end
+
+      unit_states_by_name = if unit_states == nil do
+        %{}
+      else
+        Enum.reduce unit_states, %{}, fn(unit_state, unit_states_by_name) ->
+          Map.put(unit_states_by_name, unit_state.name, unit_state)
+        end
+      end
+
+      Enum.reduce units, [], fn(unit, systemd_units) ->
+        systemd_units ++ [build_unit(etcd_token, unit, unit_states_by_name[unit.name])]
+      end
+    end
+  end
+
+  @doc """
+  Method to retrieve the current SystemdUnit for a unit on the cluster
   
   ## Options
   
   The `unit` option define the Systemd PID
    
   The `etcd_token` provides the etcd token to connect to fleet
+
+  ## Return Value
+
+  SystemdUnit
   
   """
-  @spec refresh(pid, String.t()) :: term
-  def refresh(unit, etcd_token \\ nil) do
-    unit_options = Agent.get(unit, fn options -> options end)
-
-    resolved_etcd_token = resolve_fleet_pid(unit, etcd_token)
-    Logger.debug("Refreshing unit #{unit_options["name"]} on cluster...")
-    refreshed_options = Etcd.get_unit(resolved_etcd_token, unit_options["name"])
-    if refreshed_options["name"] == nil || String.length(refreshed_options["name"]) == 0 do
-      Logger.error("The refresh for unit #{unit_options["name"]} has failed - the returned data is invalid:  #{inspect refreshed_options}")
-    else
-      Agent.update(unit, fn _ -> refreshed_options end)
+  @spec get_unit(String.t(), String.t()) :: SystemdUnit.t
+  def get_unit(unit_name, etcd_token) do
+    Logger.debug("Retrieving unit #{unit_name} on cluster #{etcd_token}...")
+    api = get_fleet_api(etcd_token)
+    unit = case FleetApi.Etcd.get_unit(api, unit_name) do
+      {:ok, unit} -> unit
+      {:error, reason} -> 
+        Logger.error("Failed to retrieve unit #{unit_name} on cluster #{etcd_token}:  #{inspect reason}")
+        nil
     end
 
-    set_etcd_token(unit, resolved_etcd_token)
-  end
+    if unit != nil do
+      unit_state = case FleetApi.Etcd.list_unit_states(api, unit_name: unit_name) do
+        {:ok, unit_state} -> unit_state
+        {:error, reason} -> 
+          Logger.error("Failed to retrieve unit_state for unit #{unit_name} on cluster #{etcd_token}:  #{inspect reason}")
+          nil
+      end
 
-  @doc """
-  Method to retrieve the unit name
-  
-  ## Options
-  
-  The `unit` option define the Systemd PID
-   
-  ## Return Values
-
-  String
-  
-  """
-  @spec get_unit_name(pid) :: String.t()
-  def get_unit_name(unit) do
-    unit_options = Agent.get(unit, fn options -> options end)
-    unit_options["name"]
-  end
-
-  @doc """
-  Method to retrieve the unit name
-  
-  ## Options
-  
-  The `unit` option define the Systemd PID
-   
-  ## Return Values
-
-  String
-  
-  """
-  @spec get_machine_id(pid) :: String.t()
-  def get_machine_id(unit) do
-    unit_options = Agent.get(unit, fn options -> options end)
-    unit_options["machineID"]
+      build_unit(etcd_token, unit, unit_state)
+    else
+      nil
+    end
   end
 
   @doc """
@@ -178,12 +172,11 @@ defmodule OpenAperture.Fleet.SystemdUnit do
   true or {false, state}
   
   """
-  @spec is_launched?(pid) :: term
+  @spec is_launched?(SystemdUnit.t) :: true | {false, String.t()}
   def is_launched?(unit) do
-		unit_options = Agent.get(unit, fn options -> options end)  	
-    case unit_options["currentState"] do
+    case unit.currentState do
       "launched" -> true
-      _ -> {false, unit_options["currentState"]}
+      _ -> {false, unit.currentState}
     end
   end
 
@@ -192,39 +185,22 @@ defmodule OpenAperture.Fleet.SystemdUnit do
   
   ## Options
   
-  The `unit` option define the Systemd PID
+  The `unit` option define the SystemdUnit
    
   ## Return Values
 
-  true or {false, active_state, load_state, sub_state}
+  {false, unit.systemdActiveState, unit.systemdLoadState, unit.systemdSubState}
 
   active_state:  http://www.freedesktop.org/software/systemd/man/systemd.html
   load_state:  http://www.freedesktop.org/software/systemd/man/systemd.unit.html
   sub_state:  http://www.freedesktop.org/software/systemd/man/systemd.html  
   
   """
-  @spec is_active?(pid, String.t()) :: term
-  def is_active?(unit, etcd_token \\ nil) do
-  	unit_options = Agent.get(unit, fn options -> options end)
-  	current_unit_states = Etcd.list_unit_states(resolve_fleet_pid(unit, etcd_token))
-    if (current_unit_states != nil ) do
-      requested_state = Enum.reduce(current_unit_states, nil, fn(current_state, requested_state)->
-        if ((requested_state == nil) && unit_options["name"] != nil && String.contains?(current_state["name"], unit_options["name"])) do
-          requested_state = current_state
-        end
-        requested_state
-      end)
-      if (requested_state != nil) do
-  	    case requested_state["systemdActiveState"] do
-  	    	"active" -> true
-  	    	_ -> {false, requested_state["systemdActiveState"], requested_state["systemdLoadState"], requested_state["systemdSubState"]}
-  	    end
-  	  else
-  	  	{false, nil, nil, nil}
-  	  end
-    else
-      Logger.error("Unable to verify the state of unit #{unit_options["name"]}!  Please verify that all hosts in the etcd cluster are running Fleet version 0.8.3 or greater!")   
-      {false, nil, nil, nil}
+  @spec is_active?(SystemdUnit.t) :: true | {false, String.t(), String.t(), String.t()}
+  def is_active?(unit) do
+    case unit.systemdActiveState do
+      "active" -> true
+      _ -> {false, unit.systemdActiveState, unit.systemdLoadState, unit.systemdSubState}
     end
   end
 
@@ -233,7 +209,7 @@ defmodule OpenAperture.Fleet.SystemdUnit do
   
   ## Options
   
-  The `unit` option define the Systemd PID
+  The `unit` option define the SystemdUnit.t
    
   The `etcd_token` provides the etcd token to connect to fleet
 
@@ -242,16 +218,23 @@ defmodule OpenAperture.Fleet.SystemdUnit do
   boolean; true if unit was launched
   
   """
-  @spec spinup_unit(pid, String.t()) :: term
-  def spinup_unit(unit, etcd_token \\ nil) do
-  	unit_options = Agent.get(unit, fn options -> options end)
-  	Logger.info ("Deploying unit #{unit_options["name"]}...")
-    case Etcd.set_unit(resolve_fleet_pid(unit, etcd_token), unit_options["name"], FleetApi.Unit.from_map(unit_options)) do
+  @spec spinup_unit(SystemdUnit.t) :: true | false
+  def spinup_unit(unit) do
+    fleet_unit = %FleetApi.Unit{
+      name: unit.name,
+      options: unit.options,
+      desiredState: unit.desiredState,
+      currentState: unit.currentState,
+      machineID: unit.machineID
+    }
+
+  	Logger.info ("Deploying unit #{unit.name}...")
+    case FleetApi.Etcd.set_unit(get_fleet_api(unit.etcd_token), fleet_unit.name, fleet_unit) do
       :ok ->
-        Logger.debug ("Successfully loaded unit #{unit_options["name"]}")
+        Logger.debug ("Successfully loaded unit #{unit.name}")
         true
       {:error, reason} ->
-        Logger.error ("Failed to created unit #{unit_options["name"]}:  #{inspect reason}")
+        Logger.error ("Failed to created unit #{unit.name}:  #{inspect reason}")
         false
     end
   end
@@ -261,25 +244,23 @@ defmodule OpenAperture.Fleet.SystemdUnit do
   
   ## Options
   
-  The `unit` option define the Systemd PID
+  The `unit` option define the SystemdUnit.t
    
-  The `etcd_token` provides the etcd token to connect to fleet
-
   ## Return Values
 
   boolean; true if unit was destroyed
   """
-  @spec teardown_unit(pid, String.t()) :: term
-  def teardown_unit(unit, etcd_token \\ nil) do
-  	unit_options = Agent.get(unit, fn options -> options end)
-
-    Logger.info ("Tearing down unit #{unit_options["name"]}...")
-    case Etcd.delete_unit(resolve_fleet_pid(unit, etcd_token), unit_options["name"]) do
+  @spec teardown_unit(SystemdUnit.t) :: true | false
+  def teardown_unit(unit) do
+    Logger.info ("Tearing down unit #{unit.name}...")
+    case FleetApi.Etcd.delete_unit(get_fleet_api(unit.etcd_token), unit.name) do
       :ok ->
-        Logger.debug ("Successfully deleted unit #{unit_options["name"]}")        
-        wait_for_unit_teardown(unit, etcd_token)
+        Logger.debug ("Successfully deleted unit #{unit.name}")        
+        wait_for_unit_teardown(unit)
+        true
       {:error, reason} ->
-        Logger.error ("Failed to deleted unit #{unit_options["name"]}:  #{inspect reason}")
+        Logger.error ("Failed to deleted unit #{unit.name}:  #{inspect reason}")
+        false
     end
   end
 
@@ -290,54 +271,30 @@ defmodule OpenAperture.Fleet.SystemdUnit do
   #
   # The `unit` option defines the Unit PID
   #
-  # The `etcd_token` option is an optional String representing a supplied etcd_token
-  #
-  @spec wait_for_unit_teardown(pid, String.t()) :: String.t()
-  defp wait_for_unit_teardown(unit, etcd_token) do
-    unit_options = Agent.get(unit, fn options -> options end)
-    Logger.info ("Verifying unit #{unit_options["name"]} has stopped...")
+  @spec wait_for_unit_teardown(SystemdUnit.t) :: term
+  defp wait_for_unit_teardown(unit) do
+    Logger.info ("Verifying unit #{unit.name} has stopped...")
 
-    resolved_etcd_token = resolve_fleet_pid(unit, etcd_token)
-    case Etcd.get_unit(resolved_etcd_token, unit_options["name"]) do
-      :ok ->
-        Logger.debug ("Unit #{unit_options["name"]} is still stopping...")
-        :timer.sleep(10000)
-        wait_for_unit_teardown(unit, resolved_etcd_token)
-      {:error, %{code: 404}} ->
-        Logger.info ("Unit #{unit_options["name"]} has stopped")
-
-        case is_active?(unit) do
+    refreshed_unit = get_unit(unit.name, unit.etcd_token)
+    if refreshed_unit.currentState == nil do
+        Logger.info ("Unit #{unit.name} has stopped, checking active status...")
+        case is_active?(refreshed_unit) do
           true -> 
-              Logger.debug ("Unit #{unit_options["name"]} is still active...")
+              Logger.debug ("Unit #{unit.name} is still active...")
               :timer.sleep(10000)
-              wait_for_unit_teardown(unit, resolved_etcd_token)
+              wait_for_unit_teardown(unit)
           {false, "activating", _, _} -> 
-              Logger.debug ("Unit #{unit_options["name"]} is still starting up...")
+              Logger.debug ("Unit #{unit.name} is still starting up...")
               :timer.sleep(10000)
-              wait_for_unit_teardown(unit, resolved_etcd_token)
+              wait_for_unit_teardown(unit)
           {false, _, _, _} -> 
-            Logger.info ("Unit #{unit_options["name"]} is no longer active")
+            Logger.info ("Unit #{unit.name} is no longer active")
         end
+    else
+      Logger.debug ("Unit #{unit.name} is still stopping...")
+      :timer.sleep(10000)
+      wait_for_unit_teardown(unit)      
     end
-  end
-
-  @doc false
-  # Method to either return a passed in etcd token or look it up in the unit's options
-  #
-  ## Options
-  #
-  # The `unit` option defines the Unit PID
-  #
-  # The `etcd_token` option is an optional String representing a supplied etcd_token
-  #
-  ## Return Values
-  #
-  # String
-  #
-  @spec resolve_fleet_pid(pid, String.t()) :: String.t()
-  defp resolve_fleet_pid(unit, etcd_token) do
-    if (etcd_token == nil), do: etcd_token = Agent.get(unit, fn options -> options end)[:etcd_token]
-    FleetAPIInstances.get_instance(etcd_token)
   end
 
   @doc """
@@ -345,42 +302,43 @@ defmodule OpenAperture.Fleet.SystemdUnit do
   
   ## Options
   
-  The `unit` option define the Systemd PID
+  The `unit` option define the SystemdUnit.t
    
-  The `etcd_token` provides the etcd token to connect to fleet
-
   ## Return Values
 
   tuple {:ok, stdout, stderr} | {:error, stdout, stderr}
   """
-  @spec get_journal(pid, String.t()) :: {:ok, String.t(), String.t()} | {:error, String.t(), String.t()}
-  def get_journal(unit, etcd_token \\ nil) do
-    unit_options = Agent.get(unit, fn options -> options end)
+  @spec get_journal(SystemdUnit.t) :: {:ok, String.t(), String.t()} | {:error, String.t(), String.t()}
+  def get_journal(unit) do
+    api = get_fleet_api(unit.etcd_token)
 
-    resolved_fleet_pid = resolve_fleet_pid(unit, etcd_token)
-    if (unit_options["machineID"] != nil) do
-      Logger.debug("Resolving host using machineID #{unit_options["machineID"]}...")
-      cluster_hosts = Etcd.list_machines(resolved_fleet_pid)
+    requested_host = if (unit.machineID != nil) do
+      Logger.debug("Resolving host using machineID #{unit.machineID}...")
+      cluster_hosts = FleetApi.Etcd.list_machines(api)
 
-      requested_host = Enum.reduce(cluster_hosts, nil, fn(cluster_host, requested_host)->
-        if ((requested_host == nil) && (requested_host != nil && requested_host["id"] != nil && String.contains?(requested_host["id"], unit_options["machineID"]))) do
+      Enum.reduce(cluster_hosts, nil, fn(cluster_host, requested_host)->
+        if ((requested_host == nil) && (requested_host != nil && requested_host.id != nil && String.contains?(requested_host.id, unit.machineID))) do
           requested_host = cluster_host
         end
         requested_host
       end)
+    else
+      nil
     end
 
-    if requested_host != nil do
+    result = if requested_host != nil do
       Logger.debug("Retrieving logs from host #{inspect requested_host}...")
-      result = execute_journal_request([requested_host], unit_options, true)
+      execute_journal_request([requested_host], unit, true)
+    else
+      nil
     end
 
     case result do
       {:ok, stdout, stderr} -> {:ok, stdout, stderr}     
       _ -> 
         Logger.debug("Unable to retrieve logs using the unit's machineID (#{inspect requested_host}), defaulting to all hosts in cluster...")
-        hosts = Etcd.list_machines(resolved_fleet_pid)
-        execute_journal_request(hosts, unit_options, true)
+        hosts = FleetApi.Etcd.list_machines(api)
+        execute_journal_request(hosts, unit, true)
     end
   end
 
@@ -397,13 +355,13 @@ defmodule OpenAperture.Fleet.SystemdUnit do
   # 
   # tuple:  {:ok, stdout, stderr}, {:error, stdout, stderr}
   # 
-  @spec execute_journal_request(List, Map, term) :: {:ok, String.t(), String.t()}| {:ok, String.t(), String.t()}
-  def execute_journal_request([requested_host|remaining_hosts], unit_options, verify_result) do
+  @spec execute_journal_request(List, SystemdUnit.t, term) :: {:ok, String.t(), String.t()}| {:ok, String.t(), String.t()}
+  def execute_journal_request([requested_host|remaining_hosts], unit, verify_result) do
     File.mkdir_p("#{Application.get_env(:openaperture_fleet, :tmpdir)}/systemd_unit")
     stdout_file = "#{Application.get_env(:openaperture_fleet, :tmpdir)}/systemd_unit/#{UUID.uuid1()}.log"
     stderr_file = "#{Application.get_env(:openaperture_fleet, :tmpdir)}/systemd_unit/#{UUID.uuid1()}.log"
 
-    journal_script = EEx.eval_file("#{System.cwd!()}/templates/fleetctl-journal.sh.eex", [host_ip: requested_host["primaryIP"], unit_name: unit_options["name"], verify_result: verify_result])
+    journal_script = EEx.eval_file("#{System.cwd!()}/templates/fleetctl-journal.sh.eex", [host_ip: requested_host.primaryIP, unit_name: unit.name, verify_result: verify_result])
     journal_script_file = "#{Application.get_env(:openaperture_fleet, :tmpdir)}/systemd_unit/#{UUID.uuid1()}.sh"
     File.write!(journal_script_file, journal_script)
 
@@ -415,8 +373,8 @@ defmodule OpenAperture.Fleet.SystemdUnit do
         {stdout, 0} ->
           {:ok, read_output_file(stdout_file), read_output_file(stderr_file)}
         {stdout, return_status} ->
-          Logger.debug("Host #{requested_host["primaryIP"]} returned an error (#{return_status}) when looking for unit #{unit_options["name"]}:\n#{read_output_file(stdout_file)}\n\n#{read_output_file(stderr_file)}")
-          execute_journal_request(remaining_hosts, unit_options, verify_result)
+          Logger.debug("Host #{requested_host.primaryIP} returned an error (#{return_status}) when looking for unit #{unit.name}:\n#{read_output_file(stdout_file)}\n\n#{read_output_file(stderr_file)}")
+          execute_journal_request(remaining_hosts, unit, verify_result)
       end
     after
       File.rm_rf(stdout_file)
@@ -438,9 +396,9 @@ defmodule OpenAperture.Fleet.SystemdUnit do
   # 
   # tuple:  {:ok, stdout, stderr}, {:error, stdout, stderr}
   # 
-  @spec execute_journal_request(List, Map, term) :: {:ok, String.t(), String.t()}| {:error, String.t(), String.t()}
-  def execute_journal_request([], unit_options, _) do
-    {:error, "Unable to find a host running service #{unit_options["name"]}!", ""}
+  @spec execute_journal_request(List, SystemdUnit.t, term) :: {:ok, String.t(), String.t()}| {:error, String.t(), String.t()}
+  def execute_journal_request([], unit, _) do
+    {:error, "Unable to find a host running service #{unit.name}!", ""}
   end
 
 

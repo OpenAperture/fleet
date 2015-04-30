@@ -13,7 +13,7 @@ defmodule OpenAperture.Fleet do
 
     children = [
       # Define workers and child supervisors to be supervised
-      worker(OpenAperture.Fleet.FleetAPIInstances, []),
+      worker(OpenAperture.Fleet.FleetApiInstances, []),
     ]
 
     opts = [strategy: :one_for_one, name: __MODULE__]

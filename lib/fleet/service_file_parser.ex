@@ -3,11 +3,41 @@ require Logger
 defmodule OpenAperture.Fleet.ServiceFileParser do
 
   @moduledoc """
-  This module contains logic to parse Fleet service files into usable Fleet UnitOptions.
+  This module contains logic to parse Fleet service files
   """
 
   @doc """
-  Method to parse a Fleet service file into usable Fleet Unit object.
+  Method to parse a Fleet service file into a FleetApi.Unit
+
+  ## Options
+
+  The `unit_name` option is the requested name of the unit
+
+  The `filepath` option is an absolute file location containing the service file.
+
+  ## Return values
+
+  FleetApi.Unit
+  """
+  @spec parse_unit(String.t(), String.t()) :: FleetApi.Unit.t
+  def parse_unit(unit_name, filepath) do
+    raw_options = parse(filepath)
+    unit_options = if raw_options == nil || length(raw_options) == 0 do
+      []
+    else
+      Enum.reduce raw_options, [], fn raw_unit, unit_options ->
+        unit_options ++ [FleetApi.UnitOption.from_map(raw_unit)]
+      end
+    end
+
+    %FleetApi.Unit{
+      name: unit_name,
+      options: unit_options
+    }
+  end
+
+  @doc """
+  Method to parse a Fleet service file into a List of unit Maps
 
   ## Options
 
@@ -15,7 +45,7 @@ defmodule OpenAperture.Fleet.ServiceFileParser do
 
   ## Return values
 
-  List containing the UnitOptions
+  List containing the UnitOption maps
   """
   @spec parse(String.t()) :: List
   def parse(filepath) do

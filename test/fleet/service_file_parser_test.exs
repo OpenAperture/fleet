@@ -25,4 +25,18 @@ defmodule OpenAperture.Fleet.ServiceFileParserTest do
       assert unit_entries["After"] == "docker.service"
       assert unit_entries["Requires"] == "docker.service"
   end
+
+  test "parse_unit" do
+    unit = Parser.parse_unit("test_service@.service", @filename)
+    assert unit != nil
+    assert unit.name == "test_service@.service"
+
+    unit_entries = 
+      Enum.filter(unit.options, fn entry -> entry.section == "Unit" end)
+      |> Enum.reduce(%{}, fn entry, acc -> Map.put(acc, entry.name, entry.value) end)
+
+      assert unit_entries["Description"] == "Test Service"
+      assert unit_entries["After"] == "docker.service"
+      assert unit_entries["Requires"] == "docker.service"
+  end  
 end

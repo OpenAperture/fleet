@@ -4,9 +4,6 @@ defmodule OpenAperture.Fleet.EtcdCluster.Tests do
   alias OpenAperture.Fleet.EtcdCluster
   alias OpenAperture.Fleet.SystemdUnit
 
-  # =======================
-  # get_hosts Tests
-
   setup do
     :meck.new(FleetApi.Etcd, [:passthrough])
     :meck.new(SystemdUnit, [:passthrough])
@@ -17,52 +14,18 @@ defmodule OpenAperture.Fleet.EtcdCluster.Tests do
     :ok  
   end
 
+  # =======================
+  # get_hosts Tests
+  
   test "get_hosts success" do
     :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> {:ok, []} end)
-
-    cluster = EtcdCluster.create!("123abc")
-    assert EtcdCluster.get_hosts(cluster) == []
+    assert EtcdCluster.get_hosts("123abc") == []
   end
 
   test "get_hosts fail" do
     :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> {:error, "bad news bears"} end)
-
-    cluster = EtcdCluster.create!("123abc")
-    assert EtcdCluster.get_hosts(cluster) == []
+    assert EtcdCluster.get_hosts("123abc") == []
   end
-
-  # =======================
-  # get_units Tests
-
-  test "get_units success" do
-    :meck.expect(FleetApi.Etcd, :list_units, fn _token -> {:ok, []} end)
-    cluster = EtcdCluster.create!("123abc")
-    assert EtcdCluster.get_units(cluster) == []
-  end
-
-  test "get_units fail" do
-    :meck.expect(FleetApi.Etcd, :list_units, fn _token -> {:error, "bad news bears"} end)
-
-    cluster = EtcdCluster.create!("123abc")
-    assert EtcdCluster.get_units(cluster) == nil
-  end 
-  
-  # =======================
-  # get_units Tests
-
-  test "get_units_state success" do
-    :meck.expect(FleetApi.Etcd, :list_unit_states, fn _token -> {:ok, []} end)
-
-    cluster = EtcdCluster.create!("123abc")
-    assert EtcdCluster.get_units_state(cluster) == []
-  end
-
-  test "get_units_state fail" do
-    :meck.expect(FleetApi.Etcd, :list_unit_states, fn _token -> {:error, "bad news bears"} end)
-
-    cluster = EtcdCluster.create!("123abc")
-    assert EtcdCluster.get_units_state(cluster) == []
-  end   
 
   # =======================
   # deploy_units
@@ -71,128 +34,206 @@ defmodule OpenAperture.Fleet.EtcdCluster.Tests do
     :meck.expect(FleetApi.Etcd, :list_units, fn _fleet_pid -> {:ok, []} end)
     :meck.expect(FleetApi.Etcd, :list_machines, fn _fleet_pid -> {:ok, []} end)
 
-    cluster = EtcdCluster.create!("123abc")
-    new_units = []
-    assert EtcdCluster.deploy_units(cluster, new_units) == []
-  end
+    assert EtcdCluster.deploy_units("123abc", []) == []
+  end  
 
   test "deploy_units - no units and specify ports" do
     :meck.expect(FleetApi.Etcd, :list_units, fn _fleet_pid -> {:ok, []} end)
     :meck.expect(FleetApi.Etcd, :list_machines, fn _fleet_pid -> {:ok, []} end)
 
-    cluster = EtcdCluster.create!("123abc")
     new_units = []
     ports = [1, 2, 3, 4, 5]
-    assert EtcdCluster.deploy_units(cluster, new_units, ports) == []
-  end
+    assert EtcdCluster.deploy_units("123abc", new_units, ports) == []
+  end  
 
   test "deploy_units - unit without .service suffix" do
     :meck.expect(FleetApi.Etcd, :list_units, fn _fleet_pid -> {:ok, []} end)
     :meck.expect(FleetApi.Etcd, :list_machines, fn _fleet_pid -> {:ok, []} end)
 
-    unit1 = Map.put(%{}, "name", "#{UUID.uuid1()}")
+    unit1 = %FleetApi.Unit{
+      name: "#{UUID.uuid1()}@.service"
+    }
     new_units = [unit1]
-    cluster = EtcdCluster.create!("123abc")
-    assert EtcdCluster.deploy_units(cluster, new_units) == []
+    assert EtcdCluster.deploy_units("123abc", new_units) == []
   end 
-
-  test "deploy_units - units with create failing" do
-    :meck.expect(FleetApi.Etcd, :list_units, fn _token -> {:ok, []} end)
-    :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> {:ok, []} end)
-    :meck.expect(SystemdUnit, :create, fn _resolved_unit -> {:error, "bad news bears"} end)
-
-    unit1 = Map.put(%{}, "name", "#{UUID.uuid1()}.service")
-    unit2 = Map.put(%{}, "name", "#{UUID.uuid1()}.service")
-    new_units = [unit1, unit2]
-    cluster = EtcdCluster.create!("123abc")
-    assert EtcdCluster.deploy_units(cluster, new_units) == []
-  end   
 
   test "deploy_units - units with spinup failing" do
     :meck.expect(FleetApi.Etcd, :list_units, fn _token -> {:ok, []} end)
     :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> {:ok, []} end)
     
-    :meck.expect(SystemdUnit, :create, fn _resolved_unit -> {:ok, %{}} end)
-    :meck.expect(SystemdUnit, :spinup_unit, fn _resolved_unit, _etcd_token -> false end)
+    :meck.expect(SystemdUnit, :spinup_unit, fn _ -> false end)
 
-    unit1 = Map.put(%{}, "name", "#{UUID.uuid1()}.service")
-    unit2 = Map.put(%{}, "name", "#{UUID.uuid1()}.service")
+    unit1 = %FleetApi.Unit{
+      name: "#{UUID.uuid1()}@.service"
+    }
+    unit2 = %FleetApi.Unit{
+      name: "#{UUID.uuid1()}@.service"
+    }
+
     new_units = [unit1, unit2]
-    cluster = EtcdCluster.create!("123abc")
-    assert EtcdCluster.deploy_units(cluster, new_units) == []
+    assert EtcdCluster.deploy_units("123abc", new_units) == []
   end  
-
+   
   test "deploy_units - success" do
     :meck.expect(FleetApi.Etcd, :list_units, fn _token -> {:ok, []} end)
     :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> {:ok, [%{}]} end)
 
-    :meck.expect(SystemdUnit, :create, fn _resolved_unit -> {:ok, %{}} end)
-    :meck.expect(SystemdUnit, :spinup_unit, fn _resolved_unit, _etcd_token -> true end)
-    :meck.expect(SystemdUnit, :set_etcd_token, fn _resolved_unit, _etcd_token -> true end)
-    :meck.expect(SystemdUnit, :set_assigned_port, fn _resolved_unit, _port -> true end)
+    :meck.expect(SystemdUnit, :spinup_unit, fn _ -> true end)
 
-    unit1 = Map.put(%{}, "name", "#{UUID.uuid1()}.service")
-    unit2 = Map.put(%{}, "name", "#{UUID.uuid1()}.service")
+    unit1_id = "#{UUID.uuid1()}"
+    unit1 = %FleetApi.Unit{
+      name: "#{unit1_id}@.service"
+    }
+    unit2_id = "#{UUID.uuid1()}"
+    unit2 = %FleetApi.Unit{
+      name: "#{unit2_id}@.service"
+    }
     new_units = [unit1, unit2]
-    cluster = EtcdCluster.create!("123abc")
-    assert EtcdCluster.deploy_units(cluster, new_units) == [%{}]
-  end  
+    deployed_units = EtcdCluster.deploy_units("123abc", new_units)
+    assert deployed_units != nil
+    assert length(deployed_units) == 2
+
+    deployed_unit = List.first(deployed_units)
+    assert deployed_unit != nil
+    assert String.contains?(deployed_unit.name, unit1_id) || String.contains?(deployed_unit.name, unit2_id)
+
+    deployed_unit = List.last(deployed_units)
+    assert deployed_unit != nil
+    assert String.contains?(deployed_unit.name, unit1_id) || String.contains?(deployed_unit.name, unit2_id)
+  end   
+
+  test "deploy_units - success with invalid ports" do
+    :meck.expect(FleetApi.Etcd, :list_units, fn _token -> {:ok, []} end)
+    :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> {:ok, [%{}]} end)
+
+    :meck.expect(SystemdUnit, :spinup_unit, fn _ -> true end)
+
+    unit1_id = "#{UUID.uuid1()}"
+    unit1 = %FleetApi.Unit{
+      name: "#{unit1_id}@.service"
+    }
+    unit2_id = "#{UUID.uuid1()}"
+    unit2 = %FleetApi.Unit{
+      name: "#{unit2_id}@.service"
+    }
+    new_units = [unit1, unit2]
+
+    available_ports = %{}
+    available_ports = Map.put(available_ports, unit1.name, nil)
+    available_ports = Map.put(available_ports, unit2.name, [2345, 56789])
+
+    deployed_units = EtcdCluster.deploy_units("123abc", new_units, available_ports)
+    assert deployed_units != nil
+    assert length(deployed_units) == 3
+
+    deployed_unit = List.first(deployed_units)
+    assert deployed_unit != nil
+    assert String.contains?(deployed_unit.name, unit1_id) || String.contains?(deployed_unit.name, unit2_id)
+
+    deployed_unit = List.last(deployed_units)
+    assert deployed_unit != nil
+    assert String.contains?(deployed_unit.name, unit1_id) || String.contains?(deployed_unit.name, unit2_id)
+  end
 
   test "deploy_units - success with provided ports" do
     :meck.expect(FleetApi.Etcd, :list_units, fn _token -> {:ok, []} end)
     :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> [%{}] end)
 
-    :meck.expect(SystemdUnit, :create, fn _resolved_unit -> {:ok, %{}} end)
-    :meck.expect(SystemdUnit, :spinup_unit, fn _resolved_unit, _etcd_token -> true end)
-    :meck.expect(SystemdUnit, :set_etcd_token, fn _resolved_unit, _etcd_token -> true end)
-    :meck.expect(SystemdUnit, :set_assigned_port, fn _resolved_unit, _port -> true end)
+    :meck.expect(SystemdUnit, :spinup_unit, fn _ -> true end)
 
-    unit1 = Map.put(%{}, "name", "#{UUID.uuid1()}.service")
-    unit2 = Map.put(%{}, "name", "#{UUID.uuid1()}.service")
+    unit1_id = "#{UUID.uuid1()}"
+    unit1 = %FleetApi.Unit{
+      name: "#{unit1_id}@.service"
+    }
+    unit2_id = "#{UUID.uuid1()}"
+    unit2 = %FleetApi.Unit{
+      name: "#{unit2_id}@.service"
+    }
     new_units = [unit1, unit2]
-    available_ports = [12345, 67890]
-    cluster = EtcdCluster.create!("123abc")
-    assert EtcdCluster.deploy_units(cluster, new_units, available_ports) == [%{}, %{}]
-  end  
+    available_ports = %{}
+    available_ports = Map.put(available_ports, unit1.name, [12345, 67890])
+    available_ports = Map.put(available_ports, unit2.name, [2345, 56789])
+
+    deployed_units = EtcdCluster.deploy_units("123abc", new_units, available_ports)
+    assert deployed_units != nil
+    assert length(deployed_units) == 4
+
+    Enum.reduce deployed_units, nil, fn (deployed_unit, _errors) ->
+      assert deployed_unit != nil
+      assert String.contains?(deployed_unit.name, unit1_id) || String.contains?(deployed_unit.name, unit2_id)      
+    end
+  end
 
   test "deploy_units - success with template options" do
     :meck.expect(FleetApi.Etcd, :list_units, fn _token -> {:ok, []} end)
     :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> [%{}] end)
 
-    :meck.expect(SystemdUnit, :create, fn _resolved_unit -> {:ok, %{}} end)
-    :meck.expect(SystemdUnit, :spinup_unit, fn _resolved_unit, _etcd_token -> true end)
-    :meck.expect(SystemdUnit, :set_etcd_token, fn _resolved_unit, _etcd_token -> true end)
-    :meck.expect(SystemdUnit, :set_assigned_port, fn _resolved_unit, _port -> true end)
+    :meck.expect(SystemdUnit, :spinup_unit, fn _ -> true end)
 
-    unit1 = Map.put(%{}, "name", "#{UUID.uuid1()}.service")
-    unit1 = Map.put(unit1, "options", [
-      %{
-        "value" => "<%= dst_port %>"
-      }])
-
-    unit2 = Map.put(%{}, "name", "#{UUID.uuid1()}.service")
+    unit1_id = "#{UUID.uuid1()}"
+    unit1 = %FleetApi.Unit{
+      name: "#{unit1_id}@.service",
+      options: [
+        %FleetApi.UnitOption{
+          value: "<%= dst_port %>"
+        }
+      ]
+    }
+    unit2_id = "#{UUID.uuid1()}"
+    unit2 = %FleetApi.Unit{
+      name: "#{unit2_id}@.service"
+    }
     new_units = [unit1, unit2]
-    available_ports = [12345, 67890]
-    cluster = EtcdCluster.create!("123abc")
-    assert EtcdCluster.deploy_units(cluster, new_units, available_ports) == [%{}, %{}]
+    available_ports = %{}
+    available_ports = Map.put(available_ports, unit1.name, [12345, 67890])
+    available_ports = Map.put(available_ports, unit2.name, [2345, 56789])
+
+    deployed_units = EtcdCluster.deploy_units("123abc", new_units, available_ports)
+    assert deployed_units != nil
+    assert length(deployed_units) == 4
+
+    Enum.reduce deployed_units, nil, fn (deployed_unit, _errors) ->
+      assert deployed_unit != nil
+      assert String.contains?(deployed_unit.name, unit1_id) || String.contains?(deployed_unit.name, unit2_id)      
+    end
   end    
 
   test "deploy_units - teardown previous units" do
-    :meck.expect(FleetApi.Etcd, :list_units, fn _token -> {:ok, [Map.put(%{}, "name", "test_unit")]} end)
+    unit1_id = "#{UUID.uuid1()}"
+    unit1 = %FleetApi.Unit{
+      name: "#{unit1_id}@.service"
+    }
+    unit2_id = "#{UUID.uuid1()}"
+    unit2 = %FleetApi.Unit{
+      name: "#{unit2_id}@.service"
+    }
+
+    :meck.expect(FleetApi.Etcd, :list_units, fn _token -> {:ok, [
+      %FleetApi.Unit{
+        name: "#{unit1_id}@.service"
+      },
+      %FleetApi.Unit{
+        name: "#{unit2_id}@.service"
+      }
+    ]} end)
     :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> {:ok, [%{}]} end)
 
-    :meck.expect(SystemdUnit, :create, fn _resolved_unit -> {:ok, %{}} end)
-    :meck.expect(SystemdUnit, :create, fn _resolved_unit -> {:ok, %{}} end)
-    :meck.expect(SystemdUnit, :spinup_unit, fn _resolved_unit, _etcd_token -> true end)
-    :meck.expect(SystemdUnit, :set_etcd_token, fn _resolved_unit, _etcd_token -> true end)
-    :meck.expect(SystemdUnit, :set_etcd_token, fn _resolved_unit, _etcd_token -> true end)
-    :meck.expect(SystemdUnit, :teardown_unit, fn _resolved_unit, _etcd_token -> true end)
-    :meck.expect(SystemdUnit, :set_assigned_port, fn _resolved_unit, _port -> true end)
+    :meck.expect(SystemdUnit, :spinup_unit, fn _ -> true end)
+    :meck.expect(SystemdUnit, :teardown_unit, fn _ -> true end)
 
-    unit1 = Map.put(%{}, "name", "#{UUID.uuid1()}.service")
-    unit2 = Map.put(%{}, "name", "#{UUID.uuid1()}.service")
+
     new_units = [unit1, unit2]
-    cluster = EtcdCluster.create!("123abc")
-    assert EtcdCluster.deploy_units(cluster, new_units) == [%{}]
-  end
+
+    deployed_units = EtcdCluster.deploy_units("123abc", new_units)
+    assert deployed_units != nil
+    assert length(deployed_units) == 2
+
+    deployed_unit = List.first(deployed_units)
+    assert deployed_unit != nil
+    assert String.contains?(deployed_unit.name, unit1_id) || String.contains?(deployed_unit.name, unit2_id)
+
+    deployed_unit = List.last(deployed_units)
+    assert deployed_unit != nil
+    assert String.contains?(deployed_unit.name, unit1_id) || String.contains?(deployed_unit.name, unit2_id)
+  end  
 end

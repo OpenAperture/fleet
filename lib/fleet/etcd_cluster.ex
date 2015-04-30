@@ -2,69 +2,15 @@ require Logger
 
 defmodule OpenAperture.Fleet.EtcdCluster do
   alias OpenAperture.Fleet.SystemdUnit
-  alias OpenAperture.Fleet.FleetAPIInstances
+  alias OpenAperture.Fleet.FleetApiInstances
 
-  @doc """
-  Creates a `GenServer` representing an etcd cluster.
-
-  ## Return values
-
-  If the server is successfully created and initialized, the function returns
-  `{:ok, pid}`, where pid is the pid of the server. If there already exists a
-  process with the specified server name, the function returns
-  `{:error, {:already_started, pid}}` with the pid of that process.
-
-  If the `init/1` callback fails with `reason`, the function returns
-  `{:error, reason}`. Otherwise, if it returns `{:stop, reason}`
-  or `:ignore`, the process is terminated and the function returns
-  `{:error, reason}` or `:ignore`, respectively.
+  @moduledoc """
+  This module contains logic to interact with EtcdClusters and SystemdUnit modules
   """
-  @spec create(String.t()) :: {:ok, pid} | {:error, String.t()}	
-  def create(etcd_token) do
-    if etcd_token == nil || String.length(etcd_token) == 0 do
-      {:error, "Unable to create an EtcdCluster - an invalid etcd token was provided!"}
-    else
-      case Agent.start_link(fn -> %{etcd_token: etcd_token} end) do
-        {:ok, cluster} -> {:ok, cluster}
-        {:error, reason} -> {:error, reason}
-      end
-    end
-  end
 
-  @doc """
-  Method to generate a new EtcdCluster agent
-
-  ## Options
-  
-  The `etcd_token` option defines the associated etcd token.
-
-  ## Return Values
-
-  pid
-  """
-  @spec create!(String.t()) :: pid
-  def create!(etcd_token) do
-    case create(etcd_token) do
-      {:ok, cluster} -> cluster
-      {:error, reason} -> raise "Failed to create OpenAperture.Fleet.EtcdCluster:  #{reason}"
-    end
-  end
-
-  @doc """
-  Method to retrieve the token associated with the cluster
-
-  ## Options
-  
-  The `cluster` options defines the etcd cluster PID
-
-  ## Return Values
-
-  String
-  """ 
-  @spec get_token(pid) :: List
-  def get_token(cluster) do
-    cluster_options = Agent.get(cluster, fn options -> options end)
-    cluster_options[:etcd_token]
+  @spec get_fleet_api(pid) :: pid
+  defp get_fleet_api(etcd_token) do
+    FleetApiInstances.get_instance(etcd_token)
   end
 
   @doc """
@@ -72,78 +18,22 @@ defmodule OpenAperture.Fleet.EtcdCluster do
 
   ## Options
   
-  The `cluster` options defines the etcd cluster PID
+  The `etcd_token` options defines the etcd token of the cluster
 
   ## Return Values
 
   List
   """ 
-  @spec get_hosts(pid) :: List
-  def get_hosts(cluster) do
-    case cluster
-            |> fleetapi_pid_from_cluster
-            |> FleetApi.Etcd.list_machines do
-      {:ok, machines} ->
-        machines
+  @spec get_hosts(String.t) :: List
+  def get_hosts(etcd_token) do
+    case  etcd_token
+          |> get_fleet_api
+          |> FleetApi.Etcd.list_machines do
+      {:ok, machines} -> machines
       {:error, reason} ->
-        Logger.error("Unable to retrieve hosts for cluster #{cluster |> token_from_cluster}: #{inspect reason}")
+        Logger.error("Unable to retrieve hosts for cluster #{etcd_token}: #{inspect reason}")
         []
     end      
-  end
-
-  @spec fleetapi_pid_from_cluster(pid) :: pid
-  defp fleetapi_pid_from_cluster(cluster) do
-    cluster
-      |> token_from_cluster
-      |> FleetAPIInstances.get_instance
-  end
-
-  @doc """
-  Method to retrieve the current units in the cluster
-
-  ## Options
-  
-  The `cluster` options defines the etcd cluster PID
-
-  ## Return Values
-
-  List
-  """ 
-  @spec get_units(pid) :: List
-  def get_units(cluster) do
-    case cluster
-          |> fleetapi_pid_from_cluster
-          |> FleetApi.Etcd.list_units do
-      {:ok, units} ->
-        units
-      {:error, reason} -> 
-        Logger.error("Unable to retrieve hosts for cluster #{cluster |> token_from_cluster}: #{inspect reason}")
-        nil
-    end       
-  end
-
-  @doc """
-  Method to retrieve the current units in the cluster
-
-  ## Options
-  
-  The `cluster` options defines the etcd cluster PID
-
-  ## Return Values
-
-  List
-  """ 
-  @spec get_units_state(pid) :: List
-  def get_units_state(cluster) do
-    case cluster
-          |> fleetapi_pid_from_cluster
-          |> FleetApi.Etcd.list_unit_states do
-      {:ok, states} ->
-        states
-      {:error, reason} ->
-        Logger.error("Unable to retrieve any unit state in cluster #{cluster |> token_from_cluster}: #{inspect reason}")
-        []
-    end       
   end  
 
   @doc """
@@ -151,17 +41,17 @@ defmodule OpenAperture.Fleet.EtcdCluster do
 
   ## Options
   
-  The `cluster` options defines the etcd cluster PID
+  The `etcd_token` options defines the etcd token of the cluster
 
   ## Return Values
 
   Integer
   """ 
-  @spec get_host_count(pid) :: term
-  def get_host_count(cluster) do
+  @spec get_host_count(String.t) :: term
+  def get_host_count(etcd_token) do
 
     #Find out how many machines are currently on the cluster
-    hosts = get_hosts(cluster)
+    hosts = get_hosts(etcd_token)
     if (hosts == nil) do
       0
     else
@@ -174,7 +64,7 @@ defmodule OpenAperture.Fleet.EtcdCluster do
 
   ## Options
   
-  The `cluster` options defines the etcd cluster PID
+  The `etcd_token` options defines the etcd token of the cluster
 
   The `new_units` options defines the List of new units
 
@@ -184,73 +74,16 @@ defmodule OpenAperture.Fleet.EtcdCluster do
 
   List of newly deployed Units
   """ 
-  @spec deploy_units(pid, List, List) :: List
-  def deploy_units(cluster, new_units, available_ports \\ nil) do
-    {:ok, existing_units} = cluster
-                              |> fleetapi_pid_from_cluster
-                              |> FleetApi.Etcd.list_units
-    
-    if available_ports != nil do
-      instance_cnt = length(available_ports)
-    else
-      #legacy
-      instance_cnt = get_host_count(cluster)
+  @spec deploy_units(String.t, List, List) :: List
+  def deploy_units(etcd_token, new_units, map_available_ports \\ nil) do
+    case FleetApi.Etcd.list_units(get_fleet_api(etcd_token)) do
+      {:error, reason} ->
+        Logger.error("Unable to deploy units; failed to retrieve existing units:  #{inspect reason}")
+        nil
+      {:ok, existing_units} ->
+        cycle_units(etcd_token, new_units, existing_units, map_available_ports, [])
     end
-
-    cycle_units(new_units, instance_cnt, cluster |> token_from_cluster, available_ports, existing_units, [])
-  end
-
-  @spec token_from_cluster(pid) :: String.t
-  defp token_from_cluster(cluster) do
-    Agent.get(cluster, fn options -> options end)[:etcd_token]
-  end
-
-  @doc false
-  # Method to execute a rolling cycle Units on the cluster
-  #
-  ## Options
-  #
-  # The `[unit|remaining_units]` options defines the list of Units
-  #
-  # The `max_instance_cnt` options defines the number of servers to which the Unit will be deployed
-  #
-  # The `etcd_token` is the string containing the etcd token
-  #
-  # The `available_ports` optional option defines a List of ports that will be used for deployment
-  #
-  # The `all_existing_units` is a List of of units currently running on the cluster
-  #
-  # The `newly_deployed_units` is a List of of units that were spun up during this cycle
-  #
-  ## Return Values
-  #
-  # List of the Units that were generated
-  #
-  @spec cycle_units(List, term, String.t(), List, List, List) :: term
-  defp cycle_units([unit|remaining_units], max_instance_cnt, etcd_token, available_ports, all_existing_units, newly_deployed_units) do
-    unless(unit == nil || unit["name"] == nil) do
-      orig_unit_name = hd(String.split(unit["name"], ".service"))
-
-      if (all_existing_units == nil) do
-        existing_units = []
-      else
-        existing_units = Enum.reduce(all_existing_units, [], fn(unit, existing_units)->
-          if String.contains?(unit["name"], orig_unit_name) do
-            existing_units = existing_units ++ [unit]
-          end
-          existing_units
-        end)
-      end
-
-      #if there are any instances left over (originally there were 4, now there are 3), tear them down
-      {remaining_units, newly_deployed_units, remaining_ports} = cycle_unit(unit, 0, max_instance_cnt, available_ports, etcd_token, {existing_units, [], []})
-      teardown_units(remaining_units, etcd_token)
-    else
-      remaining_ports = available_ports
-    end
-
-    cycle_units(remaining_units, max_instance_cnt, etcd_token, remaining_ports, all_existing_units, newly_deployed_units)
-  end
+  end  
 
   @doc false
   # Method to execute a rolling cycle Units on the cluster.  Ends recursion
@@ -259,13 +92,11 @@ defmodule OpenAperture.Fleet.EtcdCluster do
   #
   # The `[unit|remaining_units]` options defines the list of Units
   #
-  # The `max_instance_cnt` options defines the number of servers to which the Unit will be deployed
-  #
   # The `etcd_token` is the string containing the etcd token
   #
-  # The `available_ports` optional option defines a List of ports that will be used for deployment
+  # The `existing_units` is a List of of units currently running on the cluster
   #
-  # The `all_existing_units` is a List of of units currently running on the cluster
+  # The `map_available_port` option defines a Map of ports that can be used for units during deployment
   #
   # The `newly_deployed_units` is a List of of units that were spun up during this cycle
   #
@@ -273,135 +104,191 @@ defmodule OpenAperture.Fleet.EtcdCluster do
   #
   # List of the Units that were generated
   #
-  @spec cycle_units(List, term, String.t(), List, List, List) :: term
-  defp cycle_units([], _, _, _, _, newly_deployed_units) do
+  @spec cycle_units(String.t, [], List, Map, List) :: List
+  defp cycle_units(_etcd_token, [], _existing_units, _map_available_ports, newly_deployed_units) do
     newly_deployed_units
   end
+
+  @doc false
+  # Method to execute a rolling cycle Units on the cluster. 
+  #
+  ## Options
+  #
+  # The `[unit|remaining_units]` options defines the list of Units
+  #
+  # The `etcd_token` is the string containing the etcd token
+  #
+  # The `existing_units` is a List of of units currently running on the cluster
+  #
+  # The `map_available_port` option defines a Map of ports that can be used for units during deployment
+  #
+  # The `newly_deployed_units` is a List of of units that were spun up during this cycle
+  #
+  ## Return Values
+  #
+  # List of the Units that were generated
+  #
+  @spec cycle_units(String.t, List, List, Map, List) :: List
+  defp cycle_units(etcd_token, [unit|remaining_units], all_existing_units, map_available_ports, deployed_units) do
+    orig_unit_name = List.first(Regex.split(~r/@(\d+)?.service/, unit.name))
+
+    {max_instance_cnt, available_ports} = if map_available_ports != nil do
+      available_ports = map_available_ports[unit.name]
+      if available_ports != nil do
+        {length(available_ports), available_ports}
+      else
+        Logger.warn("There are an invalid number of ports available for unit #{orig_unit_name}, defaulting to cluster host count")
+        {get_host_count(etcd_token), nil}        
+      end
+    else
+      #legacy (i.e. no dynamic port mappings)
+      {get_host_count(etcd_token), nil}
+    end
+
+    Logger.info("Cycling unit #{orig_unit_name} on cluster #{etcd_token}, new instance count will be #{max_instance_cnt}...")
+
+    existing_units = if (all_existing_units == nil) do
+      Logger.debug("There are currently no units running on cluster #{etcd_token}")
+      []
+    else
+      Logger.debug("There are currently #{length(all_existing_units)} units running on cluster #{etcd_token}")
+      Enum.reduce(all_existing_units, [], fn(unit, existing_units)->
+        if String.contains?(unit.name, orig_unit_name) do
+          existing_units = existing_units ++ [unit]
+        end
+        existing_units
+      end)
+    end
+
+    #if there are any instances left over (originally there were 4, now there are 3), tear them down
+    Logger.info("There are currently #{length(existing_units)} instances of unit #{orig_unit_name} remaining on the cluster")
+    {remaining_existing_units, newly_deployed_units} = cycle_unit(etcd_token, unit, 0, max_instance_cnt, available_ports, {existing_units, []})
+    Logger.debug("Cycling unit #{orig_unit_name} has resulted in #{length(newly_deployed_units)} new units")
+    teardown_units(etcd_token, remaining_existing_units)
+    cycle_units(etcd_token, remaining_units, all_existing_units, map_available_ports, deployed_units ++ newly_deployed_units)
+  end  
 
   @doc false
   # Method to execute a rolling cycle of a Unit on the cluster
   #
   ## Options
   #
+  # The `etcd_token` is the string containing the etcd token
+  #
   # The `[unit|remaining_units]` options defines the list of Units
   #
   # The `cur_instance_id` options defines the unique instance identifier for this unit on the cluster
   #
-  # The `max_instance_cnt` options defines the number of servers to which the Unit will be deployed
+  # The `max_instance_cnt` options defines the number of servers to which the Unit will be deployed 
   #
-  # The `etcd_token` is the string containing the etcd token
+  # The `available_ports` option defines a List of ports that will be used for deployment
   #
-  # The `available_ports` optional option defines a List of ports that will be used for deployment
-  #
-  # The `all_existing_units` is a List of of units currently running on the cluster
+  # The `existing_units` is a List of of units currently running on the cluster
   #
   # The `newly_deployed_units` is a List of of units that were spun up during this cycle
   #
   ## Return Values
   #
-  # List of the Units that were generated
+  # {List of existing units, List of newly deployed units}
   #
-  @spec cycle_unit(term, term, term, List, String.t(), term) :: term
-  defp cycle_unit(unit, cur_instance_id, max_instance_cnt, available_ports, etcd_token, {existing_units, newly_deployed_units, remaining_ports}) do
+  @spec cycle_unit(String.t(), FleetApi.Unit.t, term, term, Map, {List, List}) :: {List, List}
+  defp cycle_unit(etcd_token, unit, cur_instance_id, max_instance_cnt, available_ports, {existing_units, newly_deployed_units}) do
     if (cur_instance_id >= max_instance_cnt) do
       #if we've maxed out our unit count, stop and return any existing units that need to be terminated
-      {existing_units, newly_deployed_units, remaining_ports}
+      {existing_units, newly_deployed_units}
     else
-      resolved_unit = Map.put(unit, "desiredState", "launched")
+      orig_unit_name = List.first(Regex.split(~r/@(\d+)?.service/, unit.name))
+      resolved_unit = %{ unit | name: "#{orig_unit_name}@#{cur_instance_id}.service"}
+      resolved_unit = %{ resolved_unit | desiredState: "launched"}
 
-      #fleet_api requires that name be an atom, so ensure that it's present
-      if (resolved_unit[:name] == nil && resolved_unit["name"] != nil) do
-        orig_unit_name = hd(String.split(resolved_unit["name"], ".service"))
-        unit_instance_name = "#{orig_unit_name}#{cur_instance_id}.service"
-        resolved_unit = Map.put(resolved_unit, :name, unit_instance_name)
-        resolved_unit = Map.put(resolved_unit, "name", unit_instance_name)
-      end
+      Logger.debug("Resolved unit name #{orig_unit_name} to unit instance name #{resolved_unit.name}")
 
       #check to see if a unit with the same name already is running
       existing_unit = Enum.reduce(existing_units, nil, fn(cur_unit, existing_unit)->
-        if ((existing_unit == nil) && String.contains?(cur_unit["name"], resolved_unit["name"])) do
+        if ((existing_unit == nil) && String.contains?(cur_unit.name, resolved_unit.name)) do
           existing_unit = cur_unit
         end
         existing_unit
       end)
 
       #if the same unit name is running, stop it and track the remaining units
-      if (existing_unit != nil) do
-        teardown_units([existing_unit], etcd_token)
-        remaining_units = List.delete(existing_units, existing_unit)
+      remaining_units = if (existing_unit != nil) do
+        teardown_units(etcd_token, [existing_unit])
+        List.delete(existing_units, existing_unit)
       else
-        remaining_units = existing_units
+        existing_units
       end
 
       #spin through and determine if we need to swap out the port
-      if available_ports != nil do
-        port = List.first(available_ports)
-        available_ports = List.delete_at(available_ports, 0)
+      {port, remaining_ports} = if available_ports != nil do
+        {List.first(available_ports), List.delete_at(available_ports, 0)}
       else
-        port = 0
+        {0, nil}
       end
-            
-      if resolved_unit["options"] != nil && length(resolved_unit["options"]) > 0 do
-        new_options= Enum.reduce resolved_unit["options"], [], fn (option, new_options) ->
-          if String.contains?(option["value"], "<%=") do
-            updated_option_value = EEx.eval_string(option["value"], [dst_port: port])
-            updated_option = Map.put(option, "value", updated_option_value)
+
+      resolved_unit = if resolved_unit.options != nil && length(resolved_unit.options) > 0 do
+        new_options = Enum.reduce resolved_unit.options, [], fn (option, new_options) ->
+          updated_option = if String.contains?(option.value, "<%=") do
+            updated_option_value = EEx.eval_string(option.value, [dst_port: port])
+            %{option | value: updated_option_value}
           else
-            updated_option = option
+            option
           end
 
           new_options ++ [updated_option]
         end
-        resolved_unit = Map.put(resolved_unit, "options", new_options)
+        %{ resolved_unit | options: new_options}
+      else
+        resolved_unit
       end
       
       #spin up the new unit
-      case SystemdUnit.create(resolved_unit) do
-        {:ok, deployed_unit} ->
-          case SystemdUnit.spinup_unit(deployed_unit, etcd_token) do
-            true ->
-              SystemdUnit.set_etcd_token(deployed_unit, etcd_token)
-              SystemdUnit.set_assigned_port(deployed_unit, port)
-              newly_deployed_units = newly_deployed_units ++ [deployed_unit]
-            false ->
-              Logger.error("Unable to monitor instance #{resolved_unit["name"]}")
-          end
-        {:error, reason} -> Logger.error("Failed to create systemd unit for #{resolved_unit["name"]}:  #{reason}")
+      systemd_unit = SystemdUnit.from_fleet_unit(etcd_token, resolved_unit)
+      systemd_unit = %{systemd_unit | dst_port: port}
+
+      Logger.info("Spinning up unit #{systemd_unit.name} on cluster #{etcd_token}...")
+      newly_deployed_units = case SystemdUnit.spinup_unit(systemd_unit) do
+        true ->
+          Logger.info("Successfully spun up unit #{systemd_unit.name} on cluster #{etcd_token}")
+          newly_deployed_units ++ [systemd_unit]
+        false -> 
+          Logger.info("Failed to spin up unit #{systemd_unit.name} on cluster #{etcd_token}!")
+          newly_deployed_units
       end
 
       #continue to spin up new units
-      cycle_unit(unit, cur_instance_id+1, max_instance_cnt, available_ports, etcd_token, {remaining_units, newly_deployed_units, available_ports})
+      cycle_unit(etcd_token, unit, cur_instance_id+1, max_instance_cnt, remaining_ports, {remaining_units, newly_deployed_units})
     end
-  end
-
-  @doc false
-  # Method to tear down an existing unit within a fleet cluster
-  #
-  ## Options
-  #
-  # The `unit` and `remaining_units` options are the fleet Units to be deleted.
-  #
-  @spec teardown_units(List, String.t()) :: term
-  defp teardown_units([unit|remaining_units], etcd_token) do
-    case SystemdUnit.create(unit) do
-      {:ok, deployed_unit} -> 
-        SystemdUnit.set_etcd_token(deployed_unit, etcd_token)
-        SystemdUnit.teardown_unit(deployed_unit, etcd_token)
-      {:error, reason} -> Logger.error("Unable to teardown unit #{unit["name"]}:  #{reason}")
-    end
-    
-    teardown_units(remaining_units, etcd_token)
-  end
-
-  @doc false
-  # Method to tear down an existing unit within a fleet cluster
-  #
-  ## Options
-  #
-  # The List option are the fleet Units to be deleted.  Ends recursion.
-  #
-  @spec teardown_units(List, String.t()) :: term
-  defp teardown_units([], etcd_token) do
-    Logger.info ("Finished tearing down all previous units in cluster #{etcd_token}")
   end  
+
+  @doc false
+  # Method to tear down an existing unit within a fleet cluster
+  #
+  ## Options
+  #
+  # The `etcd_token` is the string containing the etcd token
+  #
+  # The List option is the fleet Units to be deleted.  Ends recursion.
+  #
+  @spec teardown_units(String.t(), []) :: term
+  defp teardown_units(etcd_token, []) do
+    Logger.info ("Finished tearing down all previous units in cluster #{etcd_token}")
+  end    
+
+  @doc false
+  # Method to tear down an existing unit within a fleet cluster
+  #
+  ## Options
+  #
+  # The `etcd_token` is the string containing the etcd token
+  #
+  # The List option is the fleet Units to be deleted.
+  #
+  @spec teardown_units(String.t(), List) :: term
+  defp teardown_units(etcd_token, [unit|remaining_units]) do
+    Logger.info("Tearing down unit #{unit.name} on cluster #{etcd_token}")
+    SystemdUnit.teardown_unit(unit)
+    Logger.info("Successfully tore down unit #{unit.name} on cluster #{etcd_token}")
+    teardown_units(etcd_token, remaining_units)
+  end
 end
