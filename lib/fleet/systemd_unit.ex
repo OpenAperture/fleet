@@ -276,7 +276,7 @@ defmodule OpenAperture.Fleet.SystemdUnit do
     Logger.info ("Verifying unit #{unit.name} has stopped...")
 
     refreshed_unit = get_unit(unit.name, unit.etcd_token)
-    if refreshed_unit.currentState == nil do
+    if refreshed_unit == nil || refreshed_unit.currentState == nil do
         Logger.info ("Unit #{unit.name} has stopped, checking active status...")
         case is_active?(refreshed_unit) do
           true -> 
