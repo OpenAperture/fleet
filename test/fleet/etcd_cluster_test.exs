@@ -34,12 +34,16 @@ defmodule OpenAperture.Fleet.EtcdCluster.Tests do
     :meck.expect(FleetApi.Etcd, :list_units, fn _fleet_pid -> {:ok, []} end)
     :meck.expect(FleetApi.Etcd, :list_machines, fn _fleet_pid -> {:ok, []} end)
 
+    :meck.expect(SystemdUnit, :get_units, fn _ -> {:ok, []} end)
+
     assert EtcdCluster.deploy_units("123abc", []) == []
   end  
 
   test "deploy_units - no units and specify ports" do
     :meck.expect(FleetApi.Etcd, :list_units, fn _fleet_pid -> {:ok, []} end)
     :meck.expect(FleetApi.Etcd, :list_machines, fn _fleet_pid -> {:ok, []} end)
+
+    :meck.expect(SystemdUnit, :get_units, fn _ -> {:ok, []} end)
 
     new_units = []
     ports = [1, 2, 3, 4, 5]
@@ -49,6 +53,8 @@ defmodule OpenAperture.Fleet.EtcdCluster.Tests do
   test "deploy_units - unit without .service suffix" do
     :meck.expect(FleetApi.Etcd, :list_units, fn _fleet_pid -> {:ok, []} end)
     :meck.expect(FleetApi.Etcd, :list_machines, fn _fleet_pid -> {:ok, []} end)
+
+    :meck.expect(SystemdUnit, :get_units, fn _ -> {:ok, []} end)
 
     unit1 = %FleetApi.Unit{
       name: "#{UUID.uuid1()}@.service"
@@ -60,7 +66,8 @@ defmodule OpenAperture.Fleet.EtcdCluster.Tests do
   test "deploy_units - units with spinup failing" do
     :meck.expect(FleetApi.Etcd, :list_units, fn _token -> {:ok, []} end)
     :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> {:ok, []} end)
-    
+
+    :meck.expect(SystemdUnit, :get_units, fn _ -> {:ok, []} end)    
     :meck.expect(SystemdUnit, :spinup_unit, fn _ -> false end)
 
     unit1 = %FleetApi.Unit{
@@ -78,6 +85,7 @@ defmodule OpenAperture.Fleet.EtcdCluster.Tests do
     :meck.expect(FleetApi.Etcd, :list_units, fn _token -> {:ok, []} end)
     :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> {:ok, [%{}]} end)
 
+    :meck.expect(SystemdUnit, :get_units, fn _ -> {:ok, []} end)
     :meck.expect(SystemdUnit, :spinup_unit, fn _ -> true end)
 
     unit1_id = "#{UUID.uuid1()}"
@@ -106,6 +114,7 @@ defmodule OpenAperture.Fleet.EtcdCluster.Tests do
     :meck.expect(FleetApi.Etcd, :list_units, fn _token -> {:ok, []} end)
     :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> {:ok, [%{}]} end)
 
+    :meck.expect(SystemdUnit, :get_units, fn _ -> {:ok, []} end)
     :meck.expect(SystemdUnit, :spinup_unit, fn _ -> true end)
 
     unit1_id = "#{UUID.uuid1()}"
@@ -139,6 +148,7 @@ defmodule OpenAperture.Fleet.EtcdCluster.Tests do
     :meck.expect(FleetApi.Etcd, :list_units, fn _token -> {:ok, []} end)
     :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> [%{}] end)
 
+    :meck.expect(SystemdUnit, :get_units, fn _ -> {:ok, []} end)
     :meck.expect(SystemdUnit, :spinup_unit, fn _ -> true end)
 
     unit1_id = "#{UUID.uuid1()}"
@@ -168,6 +178,7 @@ defmodule OpenAperture.Fleet.EtcdCluster.Tests do
     :meck.expect(FleetApi.Etcd, :list_units, fn _token -> {:ok, []} end)
     :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> [%{}] end)
 
+    :meck.expect(SystemdUnit, :get_units, fn _ -> {:ok, []} end)
     :meck.expect(SystemdUnit, :spinup_unit, fn _ -> true end)
 
     unit1_id = "#{UUID.uuid1()}"
@@ -208,11 +219,11 @@ defmodule OpenAperture.Fleet.EtcdCluster.Tests do
       name: "#{unit2_id}@.service"
     }
 
-    :meck.expect(FleetApi.Etcd, :list_units, fn _token -> {:ok, [
-      %FleetApi.Unit{
+    :meck.expect(SystemdUnit, :get_units, fn _token -> {:ok, [
+      %SystemdUnit{
         name: "#{unit1_id}@.service"
       },
-      %FleetApi.Unit{
+      %SystemdUnit{
         name: "#{unit2_id}@.service"
       }
     ]} end)

@@ -76,7 +76,7 @@ defmodule OpenAperture.Fleet.EtcdCluster do
   """ 
   @spec deploy_units(String.t, List, List) :: List
   def deploy_units(etcd_token, new_units, map_available_ports \\ nil) do
-    case FleetApi.Etcd.list_units(get_fleet_api(etcd_token)) do
+    case SystemdUnit.get_units(etcd_token) do
       {:error, reason} ->
         Logger.error("Unable to deploy units; failed to retrieve existing units:  #{inspect reason}")
         nil
