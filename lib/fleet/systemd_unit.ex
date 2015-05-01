@@ -97,24 +97,21 @@ defmodule OpenAperture.Fleet.SystemdUnit do
         nil
     end
 
-    if units == nil do
-      nil
-    else
-      unit_states = case FleetApi.Etcd.list_unit_states(api) do
-        {:ok, unit_states} -> unit_states
-        {:error, reason} -> 
-          Logger.error("Failed to retrieve unit states on cluster #{etcd_token}:  #{inspect reason}")
-          nil
-      end
-
-      unit_states_by_name = if unit_states == nil do
-        %{}
-      else
+    unit_states_by_name = case FleetApi.Etcd.list_unit_states(api) do
+      {:ok, unit_states} -> 
         Enum.reduce unit_states, %{}, fn(unit_state, unit_states_by_name) ->
           Map.put(unit_states_by_name, unit_state.name, unit_state)
         end
-      end
+      {:error, reason} -> 
+        Logger.error("Failed to retrieve unit states on cluster #{etcd_token}:  #{inspect reason}")
+        %{}
+    end 
 
+    if units == nil do
+      Enum.reduce Map.values(unit_states_by_name), [], fn(unit_state, systemd_units) ->
+        systemd_units ++ [build_unit(etcd_token, nil, unit_state)]
+      end
+    else
       Enum.reduce units, [], fn(unit, systemd_units) ->
         systemd_units ++ [build_unit(etcd_token, unit, unit_states_by_name[unit.name])]
       end
@@ -146,18 +143,17 @@ defmodule OpenAperture.Fleet.SystemdUnit do
         nil
     end
 
-    if unit != nil do
-      unit_state = case FleetApi.Etcd.list_unit_states(api, unit_name: unit_name) do
-        {:ok, unit_state} -> unit_state
-        {:error, reason} -> 
-          Logger.error("Failed to retrieve unit_state for unit #{unit_name} on cluster #{etcd_token}:  #{inspect reason}")
-          nil
-      end
+    unit_states_by_name = case FleetApi.Etcd.list_unit_states(api) do
+      {:ok, unit_states} -> 
+        Enum.reduce unit_states, %{}, fn(unit_state, unit_states_by_name) ->
+          Map.put(unit_states_by_name, unit_state.name, unit_state)
+        end
+      {:error, reason} -> 
+        Logger.error("Failed to retrieve unit states on cluster #{etcd_token}:  #{inspect reason}")
+        %{}
+    end 
 
-      build_unit(etcd_token, unit, unit_state)
-    else
-      nil
-    end
+    build_unit(etcd_token, unit, unit_states_by_name[unit_name])
   end
 
   @doc """

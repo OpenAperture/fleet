@@ -114,9 +114,10 @@ defmodule OpenAperture.Fleet.SystemdUnit.Tests do
 
     unit_uuid = "#{UUID.uuid1()}"
     :meck.expect(FleetApi.Etcd, :list_units, fn _ -> {:error, "bad news bears"} end)
+    :meck.expect(FleetApi.Etcd, :list_unit_states, fn _ -> {:ok, []} end)
 
     returned_units = SystemdUnit.get_units("123abc")
-    assert returned_units == nil
+    assert returned_units == []
   after
     :meck.unload(FleetApi.Etcd)
   end
@@ -141,7 +142,7 @@ defmodule OpenAperture.Fleet.SystemdUnit.Tests do
 
     unit_uuid = "#{UUID.uuid1()}"
     :meck.expect(FleetApi.Etcd, :get_unit, fn _,_ -> {:ok, unit1} end)
-    :meck.expect(FleetApi.Etcd, :list_unit_states, fn _,_ -> {:ok, %FleetApi.UnitState{}} end)
+    :meck.expect(FleetApi.Etcd, :list_unit_states, fn _ -> {:ok, [%FleetApi.UnitState{}]} end)
 
     returned_unit = SystemdUnit.get_unit("123abc", "name")
     assert returned_unit != nil
@@ -167,7 +168,7 @@ defmodule OpenAperture.Fleet.SystemdUnit.Tests do
 
     unit_uuid = "#{UUID.uuid1()}"
     :meck.expect(FleetApi.Etcd, :get_unit, fn _,_ -> {:ok, unit1} end)
-    :meck.expect(FleetApi.Etcd, :list_unit_states, fn _,_ -> {:error, "bad news bears"} end)
+    :meck.expect(FleetApi.Etcd, :list_unit_states, fn _ -> {:error, "bad news bears"} end)
 
     returned_unit = SystemdUnit.get_unit("123abc", "name")
     assert returned_unit != nil
@@ -193,9 +194,10 @@ defmodule OpenAperture.Fleet.SystemdUnit.Tests do
 
     unit_uuid = "#{UUID.uuid1()}"
     :meck.expect(FleetApi.Etcd, :get_unit, fn _,_ -> {:error, "bad news bears"} end)
+    :meck.expect(FleetApi.Etcd, :list_unit_states, fn _ -> {:ok, []} end)
 
     returned_unit = SystemdUnit.get_unit("123abc", "name")
-    assert returned_unit == nil
+    assert returned_unit != nil
   after
     :meck.unload(FleetApi.Etcd)
   end
@@ -299,7 +301,7 @@ defmodule OpenAperture.Fleet.SystemdUnit.Tests do
 
     :meck.expect(FleetApi.Etcd, :delete_unit, fn _unit, _token -> :ok end)
     :meck.expect(FleetApi.Etcd, :get_unit, fn _unit, _token -> {:ok, refreshed_unit} end)
-    :meck.expect(FleetApi.Etcd, :list_unit_states, fn _,_ -> {:ok, %FleetApi.UnitState{}} end)
+    :meck.expect(FleetApi.Etcd, :list_unit_states, fn _ -> {:ok, [%FleetApi.UnitState{}]} end)
 
     unit = %SystemdUnit{
       name: "#{UUID.uuid1()}",
