@@ -469,4 +469,17 @@ defmodule OpenAperture.Fleet.SystemdUnit.Tests do
     :meck.unload(EEx)
     :meck.unload(FleetApi.Etcd)
   end       
+
+  test "execute_journal_request - handle nil" do
+    unit = %SystemdUnit{
+      name: "#{UUID.uuid1()}",
+      desiredState: "launched",
+      currentState: "deployed",        
+      machineID: "#{UUID.uuid1()}",
+    }
+    {result, stdout, stderr} = SystemdUnit.execute_journal_request(nil, unit, true)
+    assert result == :error
+    assert stdout != nil
+    assert stderr != nil
+  end  
 end

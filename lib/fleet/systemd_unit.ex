@@ -46,11 +46,25 @@ defmodule OpenAperture.Fleet.SystemdUnit do
     systemd_unit = if unit_state == nil do
       systemd_unit
     else
-      %{systemd_unit | 
+      systemd_unit = %{systemd_unit | 
         systemdLoadState: unit_state.systemdLoadState,
         systemdActiveState: unit_state.systemdActiveState,
         systemdSubState: unit_state.systemdSubState
       }
+
+      systemd_unit = if systemd_unit.name == nil do
+        %{systemd_unit | name: unit_state.name}
+      else
+        systemd_unit
+      end
+
+      systemd_unit = if systemd_unit.machineID == nil do
+        %{systemd_unit | machineID: unit_state.machineID}
+      else
+        systemd_unit
+      end
+
+      systemd_unit
     end
 
     systemd_unit    
@@ -273,16 +287,16 @@ defmodule OpenAperture.Fleet.SystemdUnit do
 
     refreshed_unit = get_unit(unit.name, unit.etcd_token)
     if refreshed_unit == nil || refreshed_unit.currentState == nil do
-        Logger.info ("Unit #{unit.name} has stopped, checking active status...")
+        Logger.info ("Unit #{unit.name} has stopped (#{inspect refreshed_unit.currentState}), checking active status...")
         case is_active?(refreshed_unit) do
           true -> 
-              Logger.debug ("Unit #{unit.name} is still active...")
-              :timer.sleep(10000)
-              wait_for_unit_teardown(unit)
+            Logger.debug ("Unit #{unit.name} is still active...")
+            :timer.sleep(10000)
+            wait_for_unit_teardown(unit)
           {false, "activating", _, _} -> 
-              Logger.debug ("Unit #{unit.name} is still starting up...")
-              :timer.sleep(10000)
-              wait_for_unit_teardown(unit)
+            Logger.debug ("Unit #{unit.name} is still starting up...")
+            :timer.sleep(10000)
+            wait_for_unit_teardown(unit)
           {false, _, _, _} -> 
             Logger.info ("Unit #{unit.name} is no longer active")
         end
@@ -392,11 +406,28 @@ defmodule OpenAperture.Fleet.SystemdUnit do
   # 
   # tuple:  {:ok, stdout, stderr}, {:error, stdout, stderr}
   # 
-  @spec execute_journal_request(List, SystemdUnit.t, term) :: {:ok, String.t(), String.t()}| {:error, String.t(), String.t()}
+  @spec execute_journal_request([], SystemdUnit.t, term) :: {:ok, String.t(), String.t()}| {:error, String.t(), String.t()}
   def execute_journal_request([], unit, _) do
     {:error, "Unable to find a host running service #{unit.name}!", ""}
   end
 
+  @doc false
+  # Method to execute a journal request against a list of hosts.
+  #
+  ## Options
+  #
+  # The list option represents the hosts to be executed against.
+  #
+  # The `unit_options` option represents the Unit options
+  # 
+  ## Return values
+  # 
+  # tuple:  {:ok, stdout, stderr}, {:error, stdout, stderr}
+  # 
+  @spec execute_journal_request(nil, SystemdUnit.t, term) :: {:ok, String.t(), String.t()}| {:error, String.t(), String.t()}
+  def execute_journal_request(nil, unit, _) do
+    {:error, "Unable to find a host running service #{unit.name} - an invalid host-list was provided!", ""}
+  end
 
   @doc false
   # Method to read in a file and return contents
