@@ -317,7 +317,7 @@ defmodule OpenAperture.Fleet.SystemdUnit.Tests do
   # get_journal Tests
 
   test "get_journal - no machineID and no hosts" do
-    :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> [] end)
+    :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> {:ok, []} end)
 
     unit = %SystemdUnit{
       name: "#{UUID.uuid1()}",
@@ -346,7 +346,7 @@ defmodule OpenAperture.Fleet.SystemdUnit.Tests do
     :meck.new(EEx, [:unstick])
     :meck.expect(EEx, :eval_file, fn _path, _options -> "" end)
 
-    :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> [%FleetApi.Machine{}] end)
+    :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> {:ok, [%FleetApi.Machine{}]} end)
 
     unit = %SystemdUnit{
       name: "#{UUID.uuid1()}",
@@ -378,7 +378,7 @@ defmodule OpenAperture.Fleet.SystemdUnit.Tests do
     :meck.new(EEx, [:unstick])
     :meck.expect(EEx, :eval_file, fn _path, _options -> "" end)
 
-    :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> [%FleetApi.Machine{}] end)
+    :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> {:ok, [%FleetApi.Machine{}]} end)
 
     unit = %SystemdUnit{
       name: "#{UUID.uuid1()}",
@@ -414,7 +414,7 @@ defmodule OpenAperture.Fleet.SystemdUnit.Tests do
     machine = %FleetApi.Machine{
       id: machine_id
     }
-    :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> [machine] end)
+    :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> {:ok, [machine]} end)
 
     unit = %SystemdUnit{
       name: "#{UUID.uuid1()}",
@@ -451,7 +451,7 @@ defmodule OpenAperture.Fleet.SystemdUnit.Tests do
     machine = %FleetApi.Machine{
       id: machine_id
     }
-    :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> [machine] end)
+    :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> {:ok, [machine]} end)
 
     unit = %SystemdUnit{
       name: "#{UUID.uuid1()}",

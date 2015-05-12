@@ -321,17 +321,25 @@ defmodule OpenAperture.Fleet.SystemdUnit do
   @spec get_journal(SystemdUnit.t) :: {:ok, String.t(), String.t()} | {:error, String.t(), String.t()}
   def get_journal(unit) do
     api = get_fleet_api(unit.etcd_token)
+    cluster_hosts = case FleetApi.Etcd.list_machines(api) do
+      {:ok, cluster_hosts} -> cluster_hosts
+      {:error, reason} ->
+        Logger.error("Failed to retrieve hosts in cluster #{unit.etcd_token}:  #{inspect reason}")
+        nil
+    end
 
     requested_host = if (unit.machineID != nil) do
       Logger.debug("Resolving host using machineID #{unit.machineID}...")
-      cluster_hosts = FleetApi.Etcd.list_machines(api)
-
-      Enum.reduce(cluster_hosts, nil, fn(cluster_host, requested_host)->
-        if ((requested_host == nil) && (requested_host != nil && requested_host.id != nil && String.contains?(requested_host.id, unit.machineID))) do
-          requested_host = cluster_host
-        end
-        requested_host
-      end)
+      if cluster_hosts == nil || length(cluster_hosts) == 0 do
+        nil
+      else
+        Enum.reduce(cluster_hosts, nil, fn(cluster_host, requested_host)->
+          if ((requested_host == nil) && (requested_host != nil && requested_host.id != nil && String.contains?(requested_host.id, unit.machineID))) do
+            requested_host = cluster_host
+          end
+          requested_host
+        end)
+      end
     else
       nil
     end
@@ -347,8 +355,7 @@ defmodule OpenAperture.Fleet.SystemdUnit do
       {:ok, stdout, stderr} -> {:ok, stdout, stderr}     
       _ -> 
         Logger.debug("Unable to retrieve logs using the unit's machineID (#{inspect requested_host}), defaulting to all hosts in cluster...")
-        hosts = FleetApi.Etcd.list_machines(api)
-        execute_journal_request(hosts, unit, true)
+        execute_journal_request(cluster_hosts, unit, true)
     end
   end
 
