@@ -153,7 +153,7 @@ defmodule OpenAperture.Fleet.EtcdCluster do
     else
       Logger.debug("There are currently #{length(all_existing_units)} units running on cluster #{etcd_token}")
       Enum.reduce(all_existing_units, [], fn(unit, existing_units)->
-        if String.contains?(unit.name, orig_unit_name) do
+        if String.contains?(unit.name, "#{orig_unit_name}@") do
           existing_units = existing_units ++ [unit]
         end
         existing_units

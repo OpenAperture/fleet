@@ -225,7 +225,10 @@ defmodule OpenAperture.Fleet.EtcdCluster.Tests do
       },
       %SystemdUnit{
         name: "#{unit2_id}@.service"
-      }
+      },
+      %SystemdUnit{
+        name: "#{unit2_id}_staging@.service"
+      }      
     ] end)
     :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> {:ok, [%{}]} end)
 
@@ -247,4 +250,50 @@ defmodule OpenAperture.Fleet.EtcdCluster.Tests do
     assert deployed_unit != nil
     assert String.contains?(deployed_unit.name, unit1_id) || String.contains?(deployed_unit.name, unit2_id)
   end  
+
+  test "deploy_units - teardown previous units but not similarly named units" do
+    unit1_id = "#{UUID.uuid1()}"
+    unit1 = %FleetApi.Unit{
+      name: "#{unit1_id}@.service"
+    }
+    unit2_id = "#{UUID.uuid1()}"
+    unit2 = %FleetApi.Unit{
+      name: "#{unit2_id}@.service"
+    }
+
+    :meck.expect(SystemdUnit, :get_units, fn _token ->  [
+      %SystemdUnit{
+        name: "#{unit1_id}@.service"
+      },
+      %SystemdUnit{
+        name: "#{unit2_id}@.service"
+      },
+      %SystemdUnit{
+        name: "#{unit2_id}_staging@.service"
+      }      
+    ] end)
+    :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> {:ok, [%{}]} end)
+
+    :meck.expect(SystemdUnit, :spinup_unit, fn _ -> true end)
+    :meck.expect(SystemdUnit, :teardown_unit, fn unit -> 
+      IO.puts("unit to spin down:  #{inspect unit}")
+      assert !String.contains?(unit.name, "_staging")
+      true 
+    end)
+
+
+    new_units = [unit1, unit2]
+
+    deployed_units = EtcdCluster.deploy_units("123abc", new_units)
+    assert deployed_units != nil
+    assert length(deployed_units) == 2
+
+    deployed_unit = List.first(deployed_units)
+    assert deployed_unit != nil
+    assert String.contains?(deployed_unit.name, unit1_id) || String.contains?(deployed_unit.name, unit2_id)
+
+    deployed_unit = List.last(deployed_units)
+    assert deployed_unit != nil
+    assert String.contains?(deployed_unit.name, unit1_id) || String.contains?(deployed_unit.name, unit2_id)
+  end    
 end
