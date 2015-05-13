@@ -334,10 +334,11 @@ defmodule OpenAperture.Fleet.SystemdUnit do
         nil
       else
         Enum.reduce(cluster_hosts, nil, fn(cluster_host, requested_host)->
-          if ((requested_host == nil) && (requested_host != nil && requested_host.id != nil && String.contains?(requested_host.id, unit.machineID))) do
-            requested_host = cluster_host
+          cond do
+            requested_host != nil -> requested_host
+            cluster_host != nil && cluster_host.id != nil && String.contains?(cluster_host.id, unit.machineID) -> cluster_host
+            true -> requested_host
           end
-          requested_host
         end)
       end
     else
