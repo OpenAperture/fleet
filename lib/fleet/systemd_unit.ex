@@ -105,13 +105,20 @@ defmodule OpenAperture.Fleet.SystemdUnit do
     Logger.debug("Retrieving units on cluster #{etcd_token}...")
     api = get_fleet_api(etcd_token)
     units = case FleetApi.Etcd.list_units(api) do
+      {:ok, nil} -> 
+        Logger.error("FleetApi returned invalid units for cluster #{etcd_token}")
+        nil
       {:ok, units} -> units
       {:error, reason} -> 
         Logger.error("Failed to retrieve units on cluster #{etcd_token}:  #{inspect reason}")
         nil
     end
 
+    Logger.debug("Retrieving unit states on cluster #{etcd_token}...")
     unit_states_by_name = case FleetApi.Etcd.list_unit_states(api) do
+      {:ok, nil} -> 
+        Logger.error("FleetApi returned invalid unit states for cluster #{etcd_token}")
+        %{}        
       {:ok, unit_states} -> 
         Enum.reduce unit_states, %{}, fn(unit_state, unit_states_by_name) ->
           Map.put(unit_states_by_name, unit_state.name, unit_state)
@@ -122,10 +129,12 @@ defmodule OpenAperture.Fleet.SystemdUnit do
     end 
 
     if units == nil do
+      Logger.debug("There were no valid units found on cluster cluster #{etcd_token}, resolving SystemdUnit units via unit states...")
       Enum.reduce Map.values(unit_states_by_name), [], fn(unit_state, systemd_units) ->
         systemd_units ++ [build_unit(etcd_token, nil, unit_state)]
       end
     else
+      Logger.debug("Resolving SystemdUnit units...")
       Enum.reduce units, [], fn(unit, systemd_units) ->
         systemd_units ++ [build_unit(etcd_token, unit, unit_states_by_name[unit.name])]
       end
