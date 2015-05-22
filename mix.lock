@@ -1,0 +1,12 @@
+%{"earmark": {:git, "git://github.com/pragdave/earmark.git", "f078149976c6b408422bb0a6fe782f57b17afa3b", [tag: "v0.1.8"]},
+  "ex_doc": {:git, "git://github.com/elixir-lang/ex_doc.git", "27a1efed075ce6913385d87fb5eafe90cef4b776", []},
+  "fleet_api": {:hex, :fleet_api, "0.0.5"},
+  "hackney": {:hex, :hackney, "1.1.0"},
+  "hoedown": {:git, "git://github.com/hoedown/hoedown.git", "365ad578e7b767ffe7126f029c184d727a3e95b3", []},
+  "httpoison": {:hex, :httpoison, "0.6.2"},
+  "idna": {:hex, :idna, "1.0.2"},
+  "markdown": {:git, "git://github.com/devinus/markdown.git", "cd0df79b6f1cc374499d47f6ba6aaab5096f874f", []},
+  "meck": {:hex, :meck, "0.8.2"},
+  "poison": {:hex, :poison, "1.3.1"},
+  "ssl_verify_hostname": {:hex, :ssl_verify_hostname, "1.0.4"},
+  "uuid": {:hex, :uuid, "0.1.5"}}
