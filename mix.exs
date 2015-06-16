@@ -30,7 +30,7 @@ defmodule OpenAperture.Fleet.Mixfile do
       {:ex_doc, github: "elixir-lang/ex_doc", only: [:test]},
       {:earmark, github: "pragdave/earmark", tag: "v0.1.8", only: [:test]},
             
-      {:fleet_api, "~> 0.0.7"},
+      {:fleet_api, "~> 0.0.8"},
       {:uuid, "~> 0.1.5" },
       
       {:meck, "0.8.2", only: :test},
