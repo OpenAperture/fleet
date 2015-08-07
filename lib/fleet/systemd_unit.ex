@@ -373,7 +373,7 @@ defmodule OpenAperture.Fleet.SystemdUnit do
 
     result = if requested_host != nil do
       Logger.debug("Retrieving logs from host #{inspect requested_host}...")
-      execute_journal_request([requested_host], unit, true)
+      execute_journal_request([requested_host], unit, false)
     else
       nil
     end
@@ -382,7 +382,7 @@ defmodule OpenAperture.Fleet.SystemdUnit do
       {:ok, stdout, stderr} -> {:ok, stdout, stderr}     
       _ -> 
         Logger.debug("Unable to retrieve logs using the unit's machineID (#{inspect requested_host}), defaulting to all hosts in cluster...")
-        execute_journal_request(cluster_hosts, unit, true)
+        execute_journal_request(cluster_hosts, unit, false)
     end
   end
 
