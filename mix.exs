@@ -32,7 +32,7 @@ defmodule OpenAperture.Fleet.Mixfile do
             
       {:fleet_api, "~> 0.0.8"},
       {:uuid, "~> 0.1.5" },
-      
+      {:simple_agent, "~> 0.0.3"},
       {:meck, "0.8.2", only: :test},
     ]
   end
