@@ -1,6 +1,6 @@
 # OpenAperture.Fleet
 
-[![Build Status](https://semaphoreci.com/api/v1/projects/84be0e56-5459-4113-bf05-6abfda7e2a51/508879/badge.svg)](https://semaphoreci.com/perceptive/fleet)
+[![Build Status](https://semaphoreci.com/api/v1/projects/3287e3d0-2883-40a8-b97c-083e6bc69eb6/508998/badge.svg)](https://semaphoreci.com/perceptive/fleet)
 
 This reusable Elixir messaging library contains several modules for working with Fleet and CoreOS.  It provides the following features:
 
