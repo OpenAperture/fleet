@@ -85,9 +85,9 @@ defmodule OpenAperture.Fleet.SystemdUnit.Journal do
     Logger.debug ("Executing Fleet command:  #{resolved_cmd}")
     try do
       case System.cmd("/bin/bash", ["-c", resolved_cmd], []) do
-        {stdout, 0} ->
+        {_stdout, 0} ->
           {:ok, read_output_file(stdout_file), read_output_file(stderr_file)}
-        {stdout, return_status} ->
+        {_stdout, return_status} ->
           Logger.debug("Host #{requested_host.primaryIP} returned an error (#{return_status}) when looking for unit #{unit.name}:\n#{read_output_file(stdout_file)}\n\n#{read_output_file(stderr_file)}")
           execute_journal_request(remaining_hosts, unit, verify_result)
       end

@@ -43,10 +43,10 @@ defmodule OpenAperture.Fleet.SystemdUnit.KillUnit do
     Logger.debug ("Executing Fleet command:  #{resolved_cmd}")
     try do
       case System.cmd("/bin/bash", ["-c", resolved_cmd], []) do
-        {stdout, 0} ->
+        {_stdout, 0} ->
           :ok
-        {stdout, return_status} ->
-          Logger.error("Host #{host.primaryIP} returned an error (#{return_status}) when attempting to kill unit #{unit.name}:\n#{__MODULE__.read_output_file(stdout_file)}\n\n#{__MODULE__.read_output_file(stderr_file)}")
+        {_stdout, return_status} ->
+          Logger.error("Host #{host.primaryIP} returned an error (#{return_status}) when attempting to kill unit #{unit.name}:\n#{read_output_file(stdout_file)}\n\n#{read_output_file(stderr_file)}")
           :error
       end
     after
@@ -62,7 +62,7 @@ defmodule OpenAperture.Fleet.SystemdUnit.KillUnit do
   # String
   # 
   @spec read_output_file(String.t()) :: String.t()
-  def read_output_file(output_file) do
+  defp read_output_file(output_file) do
     if File.exists?(output_file) do
       File.read!(output_file)
     else
