@@ -3,6 +3,8 @@ require Logger
 defmodule OpenAperture.Fleet.SystemdUnit do
   alias OpenAperture.Fleet.SystemdUnit
   alias OpenAperture.Fleet.FleetApiInstances
+  alias OpenAperture.Fleet.SystemdUnit.Journal
+  alias OpenAperture.Fleet.SystemdUnit.KillUnit
 
   @moduledoc """
   This module contains logic to interact with SystemdUnit modules
@@ -22,7 +24,7 @@ defmodule OpenAperture.Fleet.SystemdUnit do
             systemdSubState: nil
 
   @spec get_fleet_api(String.t) :: pid
-  defp get_fleet_api(etcd_token) do
+  def get_fleet_api(etcd_token) do
     Logger.debug("Retrieving FleetApi instance...")
     instance = FleetApiInstances.get_instance(etcd_token)
     Logger.debug("Found FleetApi instance...")
@@ -288,6 +290,7 @@ defmodule OpenAperture.Fleet.SystemdUnit do
   """
   @spec teardown_unit(SystemdUnit.t) :: true | false
   def teardown_unit(unit) do
+    kill_unit(unit)
     Logger.info ("Tearing down unit #{unit.name}...")
     case FleetApi.Etcd.delete_unit(get_fleet_api(unit.etcd_token), unit.name) do
       :ok ->
@@ -332,151 +335,14 @@ defmodule OpenAperture.Fleet.SystemdUnit do
       wait_for_unit_teardown(unit)      
     end
   end
-
-  @doc """
-  Method to retrieve the journal logs associated with a Unit
   
-  ## Options
-  
-  The `unit` option define the SystemdUnit.t
-   
-  ## Return Values
-
-  tuple {:ok, stdout, stderr} | {:error, stdout, stderr}
-  """
   @spec get_journal(SystemdUnit.t) :: {:ok, String.t(), String.t()} | {:error, String.t(), String.t()}
   def get_journal(unit) do
-    api = get_fleet_api(unit.etcd_token)
-    cluster_hosts = case FleetApi.Etcd.list_machines(api) do
-      {:ok, cluster_hosts} -> cluster_hosts
-      {:error, reason} ->
-        Logger.error("Failed to retrieve hosts in cluster #{unit.etcd_token}:  #{inspect reason}")
-        nil
-    end
-
-    requested_host = if (unit.machineID != nil) do
-      Logger.debug("Resolving host using machineID #{unit.machineID}...")
-      if cluster_hosts == nil || length(cluster_hosts) == 0 do
-        nil
-      else
-        Enum.reduce(cluster_hosts, nil, fn(cluster_host, requested_host)->
-          cond do
-            requested_host != nil -> requested_host
-            cluster_host != nil && cluster_host.id != nil && String.contains?(cluster_host.id, unit.machineID) -> cluster_host
-            true -> requested_host
-          end
-        end)
-      end
-    else
-      nil
-    end
-
-    result = if requested_host != nil do
-      Logger.debug("Retrieving logs from host #{inspect requested_host}...")
-      execute_journal_request([requested_host], unit, false)
-    else
-      nil
-    end
-
-    case result do
-      {:ok, stdout, stderr} -> {:ok, stdout, stderr}     
-      _ -> 
-        Logger.debug("Unable to retrieve logs using the unit's machineID (#{inspect requested_host}), defaulting to all hosts in cluster...")
-        execute_journal_request(cluster_hosts, unit, false)
-    end
+    Journal.get_journal(unit)
   end
 
-  @doc false
-  # Method to execute a journal request against a list of hosts.
-  #
-  ## Options
-  #
-  # The list option represents the hosts to be executed against.
-  #
-  # The `unit_options` option represents the Unit options
-  # 
-  ## Return values
-  # 
-  # tuple:  {:ok, stdout, stderr}, {:error, stdout, stderr}
-  # 
-  @spec execute_journal_request(List, SystemdUnit.t, term) :: {:ok, String.t(), String.t()}| {:ok, String.t(), String.t()}
-  def execute_journal_request([requested_host|remaining_hosts], unit, verify_result) do
-    File.mkdir_p("#{Application.get_env(:openaperture_fleet, :tmpdir)}/systemd_unit")
-    stdout_file = "#{Application.get_env(:openaperture_fleet, :tmpdir)}/systemd_unit/#{UUID.uuid1()}.log"
-    stderr_file = "#{Application.get_env(:openaperture_fleet, :tmpdir)}/systemd_unit/#{UUID.uuid1()}.log"
-
-    journal_script = EEx.eval_file("#{System.cwd!()}/templates/fleetctl-journal.sh.eex", [host_ip: requested_host.primaryIP, unit_name: unit.name, verify_result: verify_result])
-    journal_script_file = "#{Application.get_env(:openaperture_fleet, :tmpdir)}/systemd_unit/#{UUID.uuid1()}.sh"
-    File.write!(journal_script_file, journal_script)
-
-    resolved_cmd = "bash #{journal_script_file} 2> #{stderr_file} > #{stdout_file} < /dev/null"
-
-    Logger.debug ("Executing Fleet command:  #{resolved_cmd}")
-    try do
-      case System.cmd("/bin/bash", ["-c", resolved_cmd], []) do
-        {stdout, 0} ->
-          {:ok, read_output_file(stdout_file), read_output_file(stderr_file)}
-        {stdout, return_status} ->
-          Logger.debug("Host #{requested_host.primaryIP} returned an error (#{return_status}) when looking for unit #{unit.name}:\n#{read_output_file(stdout_file)}\n\n#{read_output_file(stderr_file)}")
-          execute_journal_request(remaining_hosts, unit, verify_result)
-      end
-    after
-      File.rm_rf(stdout_file)
-      File.rm_rf(stderr_file)
-      File.rm_rf(journal_script_file)
-    end
+  @spec kill_unit(SystemdUnit.t) :: {:ok | :error, String.t, String.t}
+  def kill_unit(unit) do
+    KillUnit.kill_unit(unit)
   end
-
-  @doc false
-  # Method to execute a journal request against a list of hosts.
-  #
-  ## Options
-  #
-  # The list option represents the hosts to be executed against.
-  #
-  # The `unit_options` option represents the Unit options
-  # 
-  ## Return values
-  # 
-  # tuple:  {:ok, stdout, stderr}, {:error, stdout, stderr}
-  # 
-  @spec execute_journal_request([], SystemdUnit.t, term) :: {:ok, String.t(), String.t()}| {:error, String.t(), String.t()}
-  def execute_journal_request([], unit, _) do
-    {:error, "Unable to find a host running service #{unit.name}!", ""}
-  end
-
-  @doc false
-  # Method to execute a journal request against a list of hosts.
-  #
-  ## Options
-  #
-  # The list option represents the hosts to be executed against.
-  #
-  # The `unit_options` option represents the Unit options
-  # 
-  ## Return values
-  # 
-  # tuple:  {:ok, stdout, stderr}, {:error, stdout, stderr}
-  # 
-  @spec execute_journal_request(nil, SystemdUnit.t, term) :: {:ok, String.t(), String.t()}| {:error, String.t(), String.t()}
-  def execute_journal_request(nil, unit, _) do
-    {:error, "Unable to find a host running service #{unit.name} - an invalid host-list was provided!", ""}
-  end
-
-  @doc false
-  # Method to read in a file and return contents
-  # 
-  ## Return values
-  # 
-  # String
-  # 
-  @spec read_output_file(String.t()) :: String.t()
-  defp read_output_file(output_file) do
-    if File.exists?(output_file) do
-      File.read!(output_file)
-    else
-      Logger.error("Unable to read systemd output file #{output_file} - file does not exist!")
-      ""
-    end
-  end  
 end
