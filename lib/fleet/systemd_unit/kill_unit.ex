@@ -18,11 +18,15 @@ defmodule OpenAperture.Fleet.SystemdUnit.KillUnit do
                 __MODULE__.kill_unit_on_host(unit, host)
               end)
           end)
-        |> Enum.map(&Task.await/1)
+        |> Enum.map(&Task.await(&1, 60_000))
         |> Enum.filter(fn a -> a == :error end)
         case length(failures) do
-          0 -> :ok
-          _ -> :error
+          0 ->
+            Logger.info("Killed unit #{unit.name}...")
+            :ok
+          _ ->
+            Logger.warn("One or more units of #{unit.name} was unable to be killed...")
+            :error
         end
     end
   end
