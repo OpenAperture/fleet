@@ -6,6 +6,7 @@ defmodule OpenAperture.Fleet.SystemdUnit.KillUnit.Tests do
 
   setup do
     :meck.new(FleetApi.Etcd, [:passthrough])
+    :meck.new(KillUnit, [:passthrough])
     
     on_exit fn ->
       :meck.unload
@@ -13,34 +14,28 @@ defmodule OpenAperture.Fleet.SystemdUnit.KillUnit.Tests do
     :ok  
   end
 
+  test "kill_unit invalid machines" do
+    :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> {:ok, nil} end)
+    assert KillUnit.kill_unit(%SystemdUnit{}) == :error
+  end
+
   test "kill_unit no machines" do
     :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> {:ok, []} end)
-    :meck.new(KillUnit, [:passthrough])
-    host_count_agent = SimpleAgent.start! 0
-    :meck.expect(KillUnit, :kill_unit_on_host, fn _,_ -> SimpleAgent.increment! host_count_agent; :ok end)
-
-    assert KillUnit.kill_unit(%SystemdUnit{}) == :ok
-    assert SimpleAgent.get!(host_count_agent) == 0
+    assert KillUnit.kill_unit(%SystemdUnit{}) == :error
   end
 
   test "kill_unit success" do
-    :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> {:ok, [%{}, %{}, %{}]} end)
-    :meck.new(KillUnit, [:passthrough])
-    host_count_agent = SimpleAgent.start! 0
-    :meck.expect(KillUnit, :kill_unit_on_host, fn _,_ -> SimpleAgent.increment! host_count_agent; :ok end)
+    :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> {:ok, [%FleetApi.Machine{primaryIP: "1"}, %FleetApi.Machine{primaryIP: "2"}, %FleetApi.Machine{primaryIP: "3"}]} end)
+    :meck.expect(KillUnit, :kill_unit_on_host, fn _,_ -> :ok end)
 
     assert KillUnit.kill_unit(%SystemdUnit{}) == :ok
-    assert SimpleAgent.get!(host_count_agent) == 3
   end
 
   test "kill_unit failures" do
-    :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> {:ok, [%{}, %{}, %{}]} end)
-    :meck.new(KillUnit, [:passthrough])
-    host_count_agent = SimpleAgent.start! 0
-    :meck.expect(KillUnit, :kill_unit_on_host, fn _,_ -> SimpleAgent.increment! host_count_agent; :error end)
+    :meck.expect(FleetApi.Etcd, :list_machines, fn _token -> {:ok, [%FleetApi.Machine{primaryIP: "1"}, %FleetApi.Machine{primaryIP: "2"}, %FleetApi.Machine{primaryIP: "3"}]} end)
+    :meck.expect(KillUnit, :kill_unit_on_host, fn _,_ -> :error end)
 
     assert KillUnit.kill_unit(%SystemdUnit{}) == :error
-    assert SimpleAgent.get!(host_count_agent) == 3
   end
 
   test "kill_unit_on_host success" do

@@ -4,29 +4,32 @@ defmodule OpenAperture.Fleet.SystemdUnit.KillUnit do
 
   alias OpenAperture.Fleet.SystemdUnit
 
+  @logprefix "[KillUnit]"  
+
   @spec kill_unit(SystemdUnit.t) :: :ok
   def kill_unit(unit) do
-    Logger.info ("Killing unit #{unit.name}...")
+    Logger.info ("#{@logprefix} Attempting to kill unit #{unit.name}...")
     api = SystemdUnit.get_fleet_api(unit.etcd_token)
     case FleetApi.Etcd.list_machines(api) do
       {:error, reason} ->
-        Logger.error("Failed to retrieve hosts in cluster #{unit.etcd_token}:  #{inspect reason}")
-        :ok
+        Logger.error("#{@logprefix} Unable to kill unit #{unit.name} - Failed to retrieve hosts in cluster #{unit.etcd_token}:  #{inspect reason}")
+        :error
+      {:ok, nil} ->
+        Logger.error("#{@logprefix} Unable to kill unit #{unit.name} - cluster #{unit.etcd_token} returned an invalid host list!")
+        :error
+      {:ok, []} ->
+        Logger.error("#{@logprefix} Unable to kill unit #{unit.name} - cluster #{unit.etcd_token} returned no hosts!")
+        :error
       {:ok, cluster_hosts} ->
-        failures = Enum.map(cluster_hosts, fn host ->
-            Task.async(fn ->
-                __MODULE__.kill_unit_on_host(unit, host)
-              end)
-          end)
-        |> Enum.map(&Task.await(&1, 60_000))
-        |> Enum.filter(fn a -> a == :error end)
-        case length(failures) do
-          0 ->
-            Logger.info("Killed unit #{unit.name}...")
-            :ok
-          _ ->
-            Logger.warn("One or more units of #{unit.name} was unable to be killed...")
-            :error
+        :random.seed(:os.timestamp)
+        host = List.first(Enum.shuffle(cluster_hosts))
+
+        if OpenAperture.Fleet.SystemdUnit.KillUnit.kill_unit_on_host(unit, host) == :ok do
+          Logger.info("#{@logprefix} Successfully killed unit #{unit.name}")
+          :ok
+        else
+          Logger.error("#{@logprefix} Failed to kill unit #{unit.name}")
+          :error
         end
     end
   end
@@ -44,13 +47,13 @@ defmodule OpenAperture.Fleet.SystemdUnit.KillUnit do
 
     resolved_cmd = "bash #{kill_script_file} 2> #{stderr_file} > #{stdout_file} < /dev/null"
 
-    Logger.debug ("Executing Fleet command:  #{resolved_cmd}")
+    Logger.debug ("#{@logprefix} Executing Fleet command:  #{resolved_cmd}")
     try do
       case System.cmd("/bin/bash", ["-c", resolved_cmd], []) do
         {_stdout, 0} ->
           :ok
         {_stdout, return_status} ->
-          Logger.error("Host #{host.primaryIP} returned an error (#{return_status}) when attempting to kill unit #{unit.name}:\n#{read_output_file(stdout_file)}\n\n#{read_output_file(stderr_file)}")
+          Logger.error("#{@logprefix} Host #{host.primaryIP} returned an error (#{return_status}) when attempting to kill unit #{unit.name}:\n#{read_output_file(stdout_file)}\n\n#{read_output_file(stderr_file)}")
           :error
       end
     after
@@ -70,7 +73,7 @@ defmodule OpenAperture.Fleet.SystemdUnit.KillUnit do
     if File.exists?(output_file) do
       File.read!(output_file)
     else
-      Logger.error("Unable to read systemd output file #{output_file} - file does not exist!")
+      Logger.error("#{@logprefix} Unable to read systemd output file #{output_file} - file does not exist!")
       ""
     end
   end
