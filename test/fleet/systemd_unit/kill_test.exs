@@ -59,7 +59,7 @@ defmodule OpenAperture.Fleet.SystemdUnit.KillUnit.Tests do
     :meck.expect(File, :write!, fn _path, _contents -> true end)
     :meck.expect(File, :rm_rf, fn _path -> true end)
     :meck.expect(File, :exists?, fn _path -> true end)
-    :meck.expect(File, :read!, fn _path -> "" end)
+    :meck.expect(File, :read, fn _path -> {:ok, ""} end)
     :meck.new(EEx, [:unstick])
     :meck.expect(EEx, :eval_file, fn path, options -> assert String.ends_with?(path, "/templates/fleetctl-kill.sh.eex"); [host_ip: "1.2.3.4", unit_name: "my_unit_name", verify_result: true] = options; "" end)
 

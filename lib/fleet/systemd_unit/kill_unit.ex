@@ -3,6 +3,7 @@ require Logger
 defmodule OpenAperture.Fleet.SystemdUnit.KillUnit do
 
   alias OpenAperture.Fleet.SystemdUnit
+  alias OpenAperture.Fleet.CommonSystemdUtils
 
   @logprefix "[KillUnit]"  
 
@@ -47,34 +48,17 @@ defmodule OpenAperture.Fleet.SystemdUnit.KillUnit do
 
     resolved_cmd = "bash #{kill_script_file} 2> #{stderr_file} > #{stdout_file} < /dev/null"
 
-    Logger.debug ("#{@logprefix} Executing Fleet command:  #{resolved_cmd}")
+    Logger.debug ("#{@logprefix} Executing Fleet stop command:  #{resolved_cmd}")
     try do
       case System.cmd("/bin/bash", ["-c", resolved_cmd], []) do
         {_stdout, 0} ->
           :ok
         {_stdout, return_status} ->
-          Logger.error("#{@logprefix} Host #{host.primaryIP} returned an error (#{return_status}) when attempting to kill unit #{unit.name}:\n#{read_output_file(stdout_file)}\n\n#{read_output_file(stderr_file)}")
+          Logger.error("#{@logprefix} Host #{host.primaryIP} returned an error (#{return_status}) when attempting to kill unit #{unit.name}:\n#{CommonSystemdUtils.read_output_file(stdout_file)}\n\n#{CommonSystemdUtils.read_output_file(stderr_file)}")
           :error
       end
     after
       File.rm_rf(base_dir)
-    end
-  end
-
-  @doc false
-  # Method to read in a file and return contents
-  # 
-  ## Return values
-  # 
-  # String
-  # 
-  @spec read_output_file(String.t()) :: String.t()
-  defp read_output_file(output_file) do
-    if File.exists?(output_file) do
-      File.read!(output_file)
-    else
-      Logger.error("#{@logprefix} Unable to read systemd output file #{output_file} - file does not exist!")
-      ""
     end
   end
 end

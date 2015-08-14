@@ -3,6 +3,7 @@ require Logger
 defmodule OpenAperture.Fleet.SystemdUnit.Journal do
 
   alias OpenAperture.Fleet.SystemdUnit
+  alias OpenAperture.Fleet.CommonSystemdUtils
 
   @doc """
   Method to retrieve the journal logs associated with a Unit
@@ -82,13 +83,13 @@ defmodule OpenAperture.Fleet.SystemdUnit.Journal do
 
     resolved_cmd = "bash #{journal_script_file} 2> #{stderr_file} > #{stdout_file} < /dev/null"
 
-    Logger.debug ("Executing Fleet command:  #{resolved_cmd}")
+    Logger.debug ("Executing Fleet Journal command:  #{resolved_cmd}")
     try do
       case System.cmd("/bin/bash", ["-c", resolved_cmd], []) do
         {_stdout, 0} ->
-          {:ok, read_output_file(stdout_file), read_output_file(stderr_file)}
+          {:ok, CommonSystemdUtils.read_output_file(stdout_file), CommonSystemdUtils.read_output_file(stderr_file)}
         {_stdout, return_status} ->
-          Logger.debug("Host #{requested_host.primaryIP} returned an error (#{return_status}) when looking for unit #{unit.name}:\n#{read_output_file(stdout_file)}\n\n#{read_output_file(stderr_file)}")
+          Logger.debug("Host #{requested_host.primaryIP} returned an error (#{return_status}) when looking for unit #{unit.name}:\n#{CommonSystemdUtils.read_output_file(stdout_file)}\n\n#{CommonSystemdUtils.read_output_file(stderr_file)}")
           execute_journal_request(remaining_hosts, unit, verify_result)
       end
     after
@@ -132,22 +133,5 @@ defmodule OpenAperture.Fleet.SystemdUnit.Journal do
   @spec execute_journal_request(nil, SystemdUnit.t, term) :: {:ok, String.t(), String.t()}| {:error, String.t(), String.t()}
   def execute_journal_request(nil, unit, _) do
     {:error, "Unable to find a host running service #{unit.name} - an invalid host-list was provided!", ""}
-  end
-
-  @doc false
-  # Method to read in a file and return contents
-  # 
-  ## Return values
-  # 
-  # String
-  # 
-  @spec read_output_file(String.t()) :: String.t()
-  defp read_output_file(output_file) do
-    if File.exists?(output_file) do
-      File.read!(output_file)
-    else
-      Logger.error("Unable to read systemd output file #{output_file} - file does not exist!")
-      ""
-    end
   end
 end
