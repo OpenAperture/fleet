@@ -12,16 +12,16 @@ defmodule OpenAperture.Fleet.SystemdUnit do
 
   @type t :: %__MODULE__{}
 
-  defstruct name: nil,
-            options: nil,
-            etcd_token: nil,
-            dst_port: nil,
-            desiredState: nil,
-            currentState: nil,
-            machineID: nil,
-            systemdLoadState: nil,
-            systemdActiveState: nil,
-            systemdSubState: nil
+  defstruct name:                nil,
+            options:             nil,
+            etcd_token:          nil,
+            dst_port:            nil,
+            desiredState:        nil,
+            currentState:        nil,
+            machineID:           nil,
+            systemdLoadState:    nil,
+            systemdActiveState:  nil,
+            systemdSubState:     nil
 
   @spec get_fleet_api(String.t) :: pid
   def get_fleet_api(etcd_token) do
@@ -39,22 +39,20 @@ defmodule OpenAperture.Fleet.SystemdUnit do
     systemd_unit = if unit == nil do
       systemd_unit
     else
-      %{systemd_unit |
-        name: unit.name,
-        options: unit.options,
-        desiredState: unit.desiredState,
-        currentState: unit.currentState,
-        machineID: unit.machineID,
+      %{systemd_unit | name:         unit.name,
+                       options:      unit.options,
+                       desiredState: unit.desiredState,
+                       currentState: unit.currentState,
+                       machineID:    unit.machineID,
       }
     end
 
     systemd_unit = if unit_state == nil do
       systemd_unit
     else
-      systemd_unit = %{systemd_unit |
-        systemdLoadState: unit_state.systemdLoadState,
-        systemdActiveState: unit_state.systemdActiveState,
-        systemdSubState: unit_state.systemdSubState
+      systemd_unit = %{systemd_unit | systemdLoadState:   unit_state.systemdLoadState,
+                                      systemdActiveState: unit_state.systemdActiveState,
+                                      systemdSubState:    unit_state.systemdSubState
       }
 
       systemd_unit = if systemd_unit.name == nil do
@@ -179,7 +177,7 @@ defmodule OpenAperture.Fleet.SystemdUnit do
     Logger.debug("Retrieving unit #{unit_name} on cluster #{etcd_token}...")
     api = get_fleet_api(etcd_token)
     unit = case FleetApi.Etcd.get_unit(api, unit_name) do
-      {:ok, unit} -> unit
+      {:ok, unit}      -> unit
       {:error, reason} ->
         Logger.error("Failed to retrieve unit #{unit_name} on cluster #{etcd_token}:  #{inspect reason}")
         nil
@@ -214,7 +212,7 @@ defmodule OpenAperture.Fleet.SystemdUnit do
   def is_launched?(unit) do
     case unit.currentState do
       "launched" -> true
-      _ -> {false, unit.currentState}
+      _          -> {false, unit.currentState}
     end
   end
 
@@ -238,7 +236,7 @@ defmodule OpenAperture.Fleet.SystemdUnit do
   def is_active?(unit) do
     case unit.systemdActiveState do
       "active" -> true
-      _ -> {false, unit.systemdActiveState, unit.systemdLoadState, unit.systemdSubState}
+      _        -> {false, unit.systemdActiveState, unit.systemdLoadState, unit.systemdSubState}
     end
   end
 
@@ -259,11 +257,11 @@ defmodule OpenAperture.Fleet.SystemdUnit do
   @spec spinup_unit(SystemdUnit.t) :: true | false
   def spinup_unit(unit) do
     fleet_unit = %FleetApi.Unit{
-      name: unit.name,
-      options: unit.options,
-      desiredState: unit.desiredState,
-      currentState: unit.currentState,
-      machineID: unit.machineID
+      name:          unit.name,
+      options:       unit.options,
+      desiredState:  unit.desiredState,
+      currentState:  unit.currentState,
+      machineID:     unit.machineID
     }
 
   	Logger.info ("Deploying unit #{unit.name}...")
