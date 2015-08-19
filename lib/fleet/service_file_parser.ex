@@ -19,7 +19,7 @@ defmodule OpenAperture.Fleet.ServiceFileParser do
 
   FleetApi.Unit
   """
-  @spec parse_unit(String.t(), String.t()) :: FleetApi.Unit.t
+  @spec parse_unit(String.t, String.t) :: FleetApi.Unit.t
   def parse_unit(unit_name, filepath) do
     raw_options = parse(filepath)
     unit_options = if raw_options == nil || length(raw_options) == 0 do
@@ -45,9 +45,9 @@ defmodule OpenAperture.Fleet.ServiceFileParser do
 
   ## Return values
 
-  List containing the UnitOption maps
+  list containing the UnitOption maps
   """
-  @spec parse(String.t()) :: List
+  @spec parse(String.t) :: list
   def parse(filepath) do
     Logger.info("Parsing service file #{filepath}...")
     if File.exists?(filepath) do
@@ -72,9 +72,9 @@ defmodule OpenAperture.Fleet.ServiceFileParser do
   #
   ## Return Values
   #
-  # The List of all known UnitOptions
+  # The list of all known UnitOptions
   #
-  @spec process_file(term, String.t(), List) :: List
+  @spec process_file(term, String.t, list) :: list
   defp process_file(input_file, current_section, unit_options) do
     line = IO.read(input_file, :line)
     if (line != :eof) do
@@ -104,9 +104,9 @@ defmodule OpenAperture.Fleet.ServiceFileParser do
   #
   ## Return Values
   #
-  # The List of all known UnitOptions
+  # The list of all known UnitOptions
   #
-  @spec process_line(String.t(), String.t(), List) :: List
+  @spec process_line(String.t, String.t, list) :: list
   defp process_line(line, current_section, unit_options) do
     current_line = String.strip(line)
     if (String.starts_with? current_line, "#") do
@@ -132,27 +132,33 @@ defmodule OpenAperture.Fleet.ServiceFileParser do
   #
   # The `current_section` option is the string representing the current section of the options.
   #
-  # The `current_line` option is the String of the current line.  
+  # The `current_line` option is the String of the current line.
   #
   ## Return Values
   #
   # The parsed UnitOption or nil (if the line isn't an option)
   #
-  @spec parse_unit_option(String.t(), String.t()) :: term
+  @spec parse_unit_option(String.t, String.t) :: term
   defp parse_unit_option(current_section, current_line) do
     {_, name_index} = Enum.reduce( String.codepoints(current_line), {0, -1}, fn(str, { i, first_occurrence })->
-      if str == "=" && first_occurrence < 0do
+      if str == "=" && first_occurrence < 0 do
         first_occurrence = i
       end
       { i + 1, first_occurrence }
     end)
 
-    name = String.slice(current_line, 0..name_index-1)
+    name  = String.slice(current_line, 0..name_index-1)
     value = String.slice(current_line, name_index+1..-1)
-    if (name == nil || String.length(name) == 0 || value == nil || String.length(value) == 0) do
-      nil
-    else
-      %{"section" => current_section, "name"=>name, "value"=>value}
+    case unparseable?(name, value) do
+      true -> nil
+      _    -> %{"section" => current_section, "name"=>name, "value"=>value}
     end
+  end
+
+  @spec unparseable?(String.t, String.t) :: boolean
+  defp unparseable?(nil, _), do: true
+  defp unparseable?(_, nil), do: true
+  defp unparseable?(name, value) do
+    String.length(name) == 0 || String.length(value) == 0
   end
 end

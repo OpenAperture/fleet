@@ -7,16 +7,16 @@ defmodule OpenAperture.Fleet.SystemdUnit.Journal do
 
   @doc """
   Method to retrieve the journal logs associated with a Unit
-  
+
   ## Options
-  
+
   The `unit` option define the SystemdUnit.t
-   
+
   ## Return Values
 
   tuple {:ok, stdout, stderr} | {:error, stdout, stderr}
   """
-  @spec get_journal(SystemdUnit.t) :: {:ok, String.t(), String.t()} | {:error, String.t(), String.t()}
+  @spec get_journal(SystemdUnit.t) :: {:ok, String.t, String.t} | {:error, String.t, String.t}
   def get_journal(unit) do
     api = SystemdUnit.get_fleet_api(unit.etcd_token)
     cluster_hosts = case FleetApi.Etcd.list_machines(api) do
@@ -51,8 +51,8 @@ defmodule OpenAperture.Fleet.SystemdUnit.Journal do
     end
 
     case result do
-      {:ok, stdout, stderr} -> {:ok, stdout, stderr}     
-      _ -> 
+      {:ok, stdout, stderr} -> {:ok, stdout, stderr}
+      _ ->
         Logger.debug("Unable to retrieve logs using the unit's machineID (#{inspect requested_host}), defaulting to all hosts in cluster...")
         execute_journal_request(cluster_hosts, unit, false)
     end
@@ -66,12 +66,12 @@ defmodule OpenAperture.Fleet.SystemdUnit.Journal do
   # The list option represents the hosts to be executed against.
   #
   # The `unit_options` option represents the Unit options
-  # 
+  #
   ## Return values
-  # 
+  #
   # tuple:  {:ok, stdout, stderr}, {:error, stdout, stderr}
-  # 
-  @spec execute_journal_request(List, SystemdUnit.t, term) :: {:ok, String.t(), String.t()}| {:ok, String.t(), String.t()}
+  #
+  @spec execute_journal_request(List, SystemdUnit.t, term) :: {:ok, String.t, String.t}| {:ok, String.t, String.t}
   def execute_journal_request([requested_host|remaining_hosts], unit, verify_result) do
     File.mkdir_p("#{Application.get_env(:openaperture_fleet, :tmpdir)}/systemd_unit")
     stdout_file = "#{Application.get_env(:openaperture_fleet, :tmpdir)}/systemd_unit/#{UUID.uuid1()}.log"
@@ -107,12 +107,12 @@ defmodule OpenAperture.Fleet.SystemdUnit.Journal do
   # The list option represents the hosts to be executed against.
   #
   # The `unit_options` option represents the Unit options
-  # 
+  #
   ## Return values
-  # 
+  #
   # tuple:  {:ok, stdout, stderr}, {:error, stdout, stderr}
-  # 
-  @spec execute_journal_request([], SystemdUnit.t, term) :: {:ok, String.t(), String.t()}| {:error, String.t(), String.t()}
+  #
+  @spec execute_journal_request([], SystemdUnit.t, term) :: {:ok, String.t, String.t}| {:error, String.t, String.t}
   def execute_journal_request([], unit, _) do
     {:error, "Unable to find a host running service #{unit.name}!", ""}
   end
@@ -125,12 +125,12 @@ defmodule OpenAperture.Fleet.SystemdUnit.Journal do
   # The list option represents the hosts to be executed against.
   #
   # The `unit_options` option represents the Unit options
-  # 
+  #
   ## Return values
-  # 
+  #
   # tuple:  {:ok, stdout, stderr}, {:error, stdout, stderr}
-  # 
-  @spec execute_journal_request(nil, SystemdUnit.t, term) :: {:ok, String.t(), String.t()}| {:error, String.t(), String.t()}
+  #
+  @spec execute_journal_request(nil, SystemdUnit.t, term) :: {:ok, String.t, String.t}| {:error, String.t, String.t}
   def execute_journal_request(nil, unit, _) do
     {:error, "Unable to find a host running service #{unit.name} - an invalid host-list was provided!", ""}
   end

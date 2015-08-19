@@ -5,7 +5,7 @@ defmodule OpenAperture.Fleet.SystemdUnit.KillUnit do
   alias OpenAperture.Fleet.SystemdUnit
   alias OpenAperture.Fleet.CommonSystemdUtils
 
-  @logprefix "[KillUnit]"  
+  @logprefix "[KillUnit]"
 
   @spec kill_unit(SystemdUnit.t) :: :ok
   def kill_unit(unit) do
