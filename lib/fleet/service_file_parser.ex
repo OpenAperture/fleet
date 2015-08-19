@@ -141,18 +141,22 @@ defmodule OpenAperture.Fleet.ServiceFileParser do
   @spec parse_unit_option(String.t, String.t) :: term
   defp parse_unit_option(current_section, current_line) do
     {_, name_index} = Enum.reduce( String.codepoints(current_line), {0, -1}, fn(str, { i, first_occurrence })->
-      if str == "=" && first_occurrence < 0do
+      if str == "=" && first_occurrence < 0 do
         first_occurrence = i
       end
       { i + 1, first_occurrence }
     end)
 
-    name = String.slice(current_line, 0..name_index-1)
+    name  = String.slice(current_line, 0..name_index-1)
     value = String.slice(current_line, name_index+1..-1)
-    if (name == nil || String.length(name) == 0 || value == nil || String.length(value) == 0) do
-      nil
-    else
-      %{"section" => current_section, "name"=>name, "value"=>value}
+    case unparseable?(name, value) do
+      true -> nil
+      _    -> %{"section" => current_section, "name"=>name, "value"=>value}
     end
+  end
+
+  @spec unparseable?(String.t, String.t) :: boolean
+  defp unparseable?(name, value) do
+    (name == nil || String.length(name) == 0 || value == nil || String.length(value) == 0)
   end
 end
