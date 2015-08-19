@@ -156,7 +156,9 @@ defmodule OpenAperture.Fleet.ServiceFileParser do
   end
 
   @spec unparseable?(String.t, String.t) :: boolean
+  defp unparseable?(nil, _), do: true
+  defp unparseable?(_, nil), do: true
   defp unparseable?(name, value) do
-    (name == nil || String.length(name) == 0 || value == nil || String.length(value) == 0)
+    String.length(name) == 0 || String.length(value) == 0
   end
 end
