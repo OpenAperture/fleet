@@ -103,9 +103,9 @@ defmodule OpenAperture.Fleet.SystemdUnit do
 
   ## Return Value
 
-  List of SystemdUnit.t
+  list of SystemdUnit.t
   """
-  @spec get_units(String.t) :: List
+  @spec get_units(String.t) :: list
   def get_units(etcd_token) do
     try do
       Logger.debug("Retrieving units on cluster #{etcd_token}...")
@@ -288,7 +288,7 @@ defmodule OpenAperture.Fleet.SystemdUnit do
 
   boolean; true if unit was destroyed
   """
-  @spec teardown_unit(SystemdUnit.t) :: true | false
+  @spec teardown_unit(SystemdUnit.t) :: boolean
   def teardown_unit(unit) do
     kill_unit(unit)
     Logger.info ("Tearing down unit #{unit.name}...")
