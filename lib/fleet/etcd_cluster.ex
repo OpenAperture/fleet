@@ -22,9 +22,9 @@ defmodule OpenAperture.Fleet.EtcdCluster do
 
   ## Return Values
 
-  List
+  list
   """
-  @spec get_hosts(String.t) :: List
+  @spec get_hosts(String.t) :: list
   def get_hosts(etcd_token) do
     case  etcd_token
           |> get_fleet_api
@@ -72,9 +72,9 @@ defmodule OpenAperture.Fleet.EtcdCluster do
 
   ## Return Values
 
-  List of newly deployed Units
+  list of newly deployed Units
   """
-  @spec deploy_units(String.t, List, List) :: List
+  @spec deploy_units(String.t, list, list) :: list
   def deploy_units(etcd_token, new_units, map_available_ports \\ nil) do
     case SystemdUnit.get_units(etcd_token) do
       nil ->
@@ -102,9 +102,9 @@ defmodule OpenAperture.Fleet.EtcdCluster do
   #
   ## Return Values
   #
-  # List of the Units that were generated
+  # list of the Units that were generated
   #
-  @spec cycle_units(String.t, [], List, Map, List) :: List
+  @spec cycle_units(String.t, [], list, map, list) :: list
   defp cycle_units(_etcd_token, [], _existing_units, _map_available_ports, newly_deployed_units) do
     newly_deployed_units
   end
@@ -126,9 +126,9 @@ defmodule OpenAperture.Fleet.EtcdCluster do
   #
   ## Return Values
   #
-  # List of the Units that were generated
+  # list of the Units that were generated
   #
-  @spec cycle_units(String.t, List, List, Map, List) :: List
+  @spec cycle_units(String.t, list, list, map, list) :: list
   defp cycle_units(etcd_token, [unit|remaining_units], all_existing_units, map_available_ports, deployed_units) do
     orig_unit_name = List.first(Regex.split(~r/@(\d+)?.service/, unit.name))
 
@@ -189,9 +189,9 @@ defmodule OpenAperture.Fleet.EtcdCluster do
   #
   ## Return Values
   #
-  # {List of existing units, List of newly deployed units}
+  # {list of existing units, list of newly deployed units}
   #
-  @spec cycle_unit(String.t, FleetApi.Unit.t, term, term, Map, {List, List}) :: {List, List}
+  @spec cycle_unit(String.t, FleetApi.Unit.t, term, term, map, {list, list}) :: {list, list}
   defp cycle_unit(etcd_token, unit, cur_instance_id, max_instance_cnt, available_ports, {existing_units, newly_deployed_units}) do
     if (cur_instance_id >= max_instance_cnt) do
       #if we've maxed out our unit count, stop and return any existing units that need to be terminated
@@ -282,9 +282,9 @@ defmodule OpenAperture.Fleet.EtcdCluster do
   #
   # The `etcd_token` is the string containing the etcd token
   #
-  # The List option is the fleet Units to be deleted.
+  # The list option is the fleet Units to be deleted.
   #
-  @spec teardown_units(String.t, List) :: term
+  @spec teardown_units(String.t, list) :: term
   defp teardown_units(etcd_token, [unit|remaining_units]) do
     Logger.info("Tearing down unit #{unit.name} on cluster #{etcd_token}")
     SystemdUnit.teardown_unit(unit)
