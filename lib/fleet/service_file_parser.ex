@@ -19,7 +19,7 @@ defmodule OpenAperture.Fleet.ServiceFileParser do
 
   FleetApi.Unit
   """
-  @spec parse_unit(String.t(), String.t()) :: FleetApi.Unit.t
+  @spec parse_unit(String.t, String.t) :: FleetApi.Unit.t
   def parse_unit(unit_name, filepath) do
     raw_options = parse(filepath)
     unit_options = if raw_options == nil || length(raw_options) == 0 do
@@ -47,7 +47,7 @@ defmodule OpenAperture.Fleet.ServiceFileParser do
 
   List containing the UnitOption maps
   """
-  @spec parse(String.t()) :: List
+  @spec parse(String.t) :: List
   def parse(filepath) do
     Logger.info("Parsing service file #{filepath}...")
     if File.exists?(filepath) do
@@ -74,7 +74,7 @@ defmodule OpenAperture.Fleet.ServiceFileParser do
   #
   # The List of all known UnitOptions
   #
-  @spec process_file(term, String.t(), List) :: List
+  @spec process_file(term, String.t, List) :: List
   defp process_file(input_file, current_section, unit_options) do
     line = IO.read(input_file, :line)
     if (line != :eof) do
@@ -106,7 +106,7 @@ defmodule OpenAperture.Fleet.ServiceFileParser do
   #
   # The List of all known UnitOptions
   #
-  @spec process_line(String.t(), String.t(), List) :: List
+  @spec process_line(String.t, String.t, List) :: List
   defp process_line(line, current_section, unit_options) do
     current_line = String.strip(line)
     if (String.starts_with? current_line, "#") do
@@ -138,7 +138,7 @@ defmodule OpenAperture.Fleet.ServiceFileParser do
   #
   # The parsed UnitOption or nil (if the line isn't an option)
   #
-  @spec parse_unit_option(String.t(), String.t()) :: term
+  @spec parse_unit_option(String.t, String.t) :: term
   defp parse_unit_option(current_section, current_line) do
     {_, name_index} = Enum.reduce( String.codepoints(current_line), {0, -1}, fn(str, { i, first_occurrence })->
       if str == "=" && first_occurrence < 0do

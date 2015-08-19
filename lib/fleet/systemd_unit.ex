@@ -89,7 +89,7 @@ defmodule OpenAperture.Fleet.SystemdUnit do
   SystemdUnit
 
   """
-  @spec from_fleet_unit(String.t(), FleetApi.Unit) :: SystemdUnit.t
+  @spec from_fleet_unit(String.t, FleetApi.Unit) :: SystemdUnit.t
   def from_fleet_unit(etcd_token, unit) do
     build_unit(etcd_token, unit, nil)
   end
@@ -105,7 +105,7 @@ defmodule OpenAperture.Fleet.SystemdUnit do
 
   List of SystemdUnit.t
   """
-  @spec get_units(String.t()) :: List
+  @spec get_units(String.t) :: List
   def get_units(etcd_token) do
     try do
       Logger.debug("Retrieving units on cluster #{etcd_token}...")
@@ -174,7 +174,7 @@ defmodule OpenAperture.Fleet.SystemdUnit do
   SystemdUnit
 
   """
-  @spec get_unit(String.t(), String.t()) :: SystemdUnit.t
+  @spec get_unit(String.t, String.t) :: SystemdUnit.t
   def get_unit(unit_name, etcd_token) do
     Logger.debug("Retrieving unit #{unit_name} on cluster #{etcd_token}...")
     api = get_fleet_api(etcd_token)
@@ -210,7 +210,7 @@ defmodule OpenAperture.Fleet.SystemdUnit do
   true or {false, state}
 
   """
-  @spec is_launched?(SystemdUnit.t) :: true | {false, String.t()}
+  @spec is_launched?(SystemdUnit.t) :: true | {false, String.t}
   def is_launched?(unit) do
     case unit.currentState do
       "launched" -> true
@@ -234,7 +234,7 @@ defmodule OpenAperture.Fleet.SystemdUnit do
   sub_state:  http://www.freedesktop.org/software/systemd/man/systemd.html
 
   """
-  @spec is_active?(SystemdUnit.t) :: true | {false, String.t(), String.t(), String.t()}
+  @spec is_active?(SystemdUnit.t) :: true | {false, String.t, String.t, String.t}
   def is_active?(unit) do
     case unit.systemdActiveState do
       "active" -> true
@@ -336,7 +336,7 @@ defmodule OpenAperture.Fleet.SystemdUnit do
     end
   end
 
-  @spec get_journal(SystemdUnit.t) :: {:ok, String.t(), String.t()} | {:error, String.t(), String.t()}
+  @spec get_journal(SystemdUnit.t) :: {:ok, String.t, String.t} | {:error, String.t, String.t}
   def get_journal(unit) do
     Journal.get_journal(unit)
   end

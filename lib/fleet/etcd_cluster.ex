@@ -191,7 +191,7 @@ defmodule OpenAperture.Fleet.EtcdCluster do
   #
   # {List of existing units, List of newly deployed units}
   #
-  @spec cycle_unit(String.t(), FleetApi.Unit.t, term, term, Map, {List, List}) :: {List, List}
+  @spec cycle_unit(String.t, FleetApi.Unit.t, term, term, Map, {List, List}) :: {List, List}
   defp cycle_unit(etcd_token, unit, cur_instance_id, max_instance_cnt, available_ports, {existing_units, newly_deployed_units}) do
     if (cur_instance_id >= max_instance_cnt) do
       #if we've maxed out our unit count, stop and return any existing units that need to be terminated
@@ -270,7 +270,7 @@ defmodule OpenAperture.Fleet.EtcdCluster do
   #
   # The List option is the fleet Units to be deleted.  Ends recursion.
   #
-  @spec teardown_units(String.t(), []) :: term
+  @spec teardown_units(String.t, []) :: term
   defp teardown_units(etcd_token, []) do
     Logger.info ("Finished tearing down all previous units in cluster #{etcd_token}")
   end
@@ -284,7 +284,7 @@ defmodule OpenAperture.Fleet.EtcdCluster do
   #
   # The List option is the fleet Units to be deleted.
   #
-  @spec teardown_units(String.t(), List) :: term
+  @spec teardown_units(String.t, List) :: term
   defp teardown_units(etcd_token, [unit|remaining_units]) do
     Logger.info("Tearing down unit #{unit.name} on cluster #{etcd_token}")
     SystemdUnit.teardown_unit(unit)
