@@ -132,7 +132,7 @@ defmodule OpenAperture.Fleet.ServiceFileParser do
   #
   # The `current_section` option is the string representing the current section of the options.
   #
-  # The `current_line` option is the String of the current line.  
+  # The `current_line` option is the String of the current line.
   #
   ## Return Values
   #

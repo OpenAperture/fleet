@@ -7,11 +7,11 @@ defmodule OpenAperture.Fleet.SystemdUnit.Journal do
 
   @doc """
   Method to retrieve the journal logs associated with a Unit
-  
+
   ## Options
-  
+
   The `unit` option define the SystemdUnit.t
-   
+
   ## Return Values
 
   tuple {:ok, stdout, stderr} | {:error, stdout, stderr}
@@ -51,8 +51,8 @@ defmodule OpenAperture.Fleet.SystemdUnit.Journal do
     end
 
     case result do
-      {:ok, stdout, stderr} -> {:ok, stdout, stderr}     
-      _ -> 
+      {:ok, stdout, stderr} -> {:ok, stdout, stderr}
+      _ ->
         Logger.debug("Unable to retrieve logs using the unit's machineID (#{inspect requested_host}), defaulting to all hosts in cluster...")
         execute_journal_request(cluster_hosts, unit, false)
     end
@@ -66,11 +66,11 @@ defmodule OpenAperture.Fleet.SystemdUnit.Journal do
   # The list option represents the hosts to be executed against.
   #
   # The `unit_options` option represents the Unit options
-  # 
+  #
   ## Return values
-  # 
+  #
   # tuple:  {:ok, stdout, stderr}, {:error, stdout, stderr}
-  # 
+  #
   @spec execute_journal_request(List, SystemdUnit.t, term) :: {:ok, String.t(), String.t()}| {:ok, String.t(), String.t()}
   def execute_journal_request([requested_host|remaining_hosts], unit, verify_result) do
     File.mkdir_p("#{Application.get_env(:openaperture_fleet, :tmpdir)}/systemd_unit")
@@ -107,11 +107,11 @@ defmodule OpenAperture.Fleet.SystemdUnit.Journal do
   # The list option represents the hosts to be executed against.
   #
   # The `unit_options` option represents the Unit options
-  # 
+  #
   ## Return values
-  # 
+  #
   # tuple:  {:ok, stdout, stderr}, {:error, stdout, stderr}
-  # 
+  #
   @spec execute_journal_request([], SystemdUnit.t, term) :: {:ok, String.t(), String.t()}| {:error, String.t(), String.t()}
   def execute_journal_request([], unit, _) do
     {:error, "Unable to find a host running service #{unit.name}!", ""}
@@ -125,11 +125,11 @@ defmodule OpenAperture.Fleet.SystemdUnit.Journal do
   # The list option represents the hosts to be executed against.
   #
   # The `unit_options` option represents the Unit options
-  # 
+  #
   ## Return values
-  # 
+  #
   # tuple:  {:ok, stdout, stderr}, {:error, stdout, stderr}
-  # 
+  #
   @spec execute_journal_request(nil, SystemdUnit.t, term) :: {:ok, String.t(), String.t()}| {:error, String.t(), String.t()}
   def execute_journal_request(nil, unit, _) do
     {:error, "Unable to find a host running service #{unit.name} - an invalid host-list was provided!", ""}

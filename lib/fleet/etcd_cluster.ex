@@ -17,13 +17,13 @@ defmodule OpenAperture.Fleet.EtcdCluster do
   Method to retrieve the current hosts (machines) in the cluster
 
   ## Options
-  
+
   The `etcd_token` options defines the etcd token of the cluster
 
   ## Return Values
 
   List
-  """ 
+  """
   @spec get_hosts(String.t) :: List
   def get_hosts(etcd_token) do
     case  etcd_token
@@ -33,20 +33,20 @@ defmodule OpenAperture.Fleet.EtcdCluster do
       {:error, reason} ->
         Logger.error("Unable to retrieve hosts for cluster #{etcd_token}: #{inspect reason}")
         []
-    end      
-  end  
+    end
+  end
 
   @doc """
   Method to retrieve the number current hosts (machines) in the cluster
 
   ## Options
-  
+
   The `etcd_token` options defines the etcd token of the cluster
 
   ## Return Values
 
   Integer
-  """ 
+  """
   @spec get_host_count(String.t) :: term
   def get_host_count(etcd_token) do
 
@@ -63,7 +63,7 @@ defmodule OpenAperture.Fleet.EtcdCluster do
   Method to deploy new units to the cluster
 
   ## Options
-  
+
   The `etcd_token` options defines the etcd token of the cluster
 
   The `new_units` options defines the List of new units
@@ -73,7 +73,7 @@ defmodule OpenAperture.Fleet.EtcdCluster do
   ## Return Values
 
   List of newly deployed Units
-  """ 
+  """
   @spec deploy_units(String.t, List, List) :: List
   def deploy_units(etcd_token, new_units, map_available_ports \\ nil) do
     case SystemdUnit.get_units(etcd_token) do
@@ -83,7 +83,7 @@ defmodule OpenAperture.Fleet.EtcdCluster do
       existing_units ->
         cycle_units(etcd_token, new_units, existing_units, map_available_ports, [])
     end
-  end  
+  end
 
   @doc false
   # Method to execute a rolling cycle Units on the cluster.  Ends recursion
@@ -110,7 +110,7 @@ defmodule OpenAperture.Fleet.EtcdCluster do
   end
 
   @doc false
-  # Method to execute a rolling cycle Units on the cluster. 
+  # Method to execute a rolling cycle Units on the cluster.
   #
   ## Options
   #
@@ -138,7 +138,7 @@ defmodule OpenAperture.Fleet.EtcdCluster do
         {length(available_ports), available_ports}
       else
         Logger.warn("There are an invalid number of ports available for unit #{orig_unit_name}, defaulting to cluster host count")
-        {get_host_count(etcd_token), nil}        
+        {get_host_count(etcd_token), nil}
       end
     else
       #legacy (i.e. no dynamic port mappings)
@@ -166,7 +166,7 @@ defmodule OpenAperture.Fleet.EtcdCluster do
     Logger.debug("Cycling unit #{orig_unit_name} has resulted in #{length(newly_deployed_units)} new units")
     teardown_units(etcd_token, remaining_existing_units)
     cycle_units(etcd_token, remaining_units, all_existing_units, map_available_ports, deployed_units ++ newly_deployed_units)
-  end  
+  end
 
   @doc false
   # Method to execute a rolling cycle of a Unit on the cluster
@@ -179,7 +179,7 @@ defmodule OpenAperture.Fleet.EtcdCluster do
   #
   # The `cur_instance_id` options defines the unique instance identifier for this unit on the cluster
   #
-  # The `max_instance_cnt` options defines the number of servers to which the Unit will be deployed 
+  # The `max_instance_cnt` options defines the number of servers to which the Unit will be deployed
   #
   # The `available_ports` option defines a List of ports that will be used for deployment
   #
@@ -241,7 +241,7 @@ defmodule OpenAperture.Fleet.EtcdCluster do
       else
         resolved_unit
       end
-      
+
       #spin up the new unit
       systemd_unit = SystemdUnit.from_fleet_unit(etcd_token, resolved_unit)
       systemd_unit = %{systemd_unit | dst_port: port}
@@ -251,7 +251,7 @@ defmodule OpenAperture.Fleet.EtcdCluster do
         true ->
           Logger.info("Successfully spun up unit #{systemd_unit.name} on cluster #{etcd_token}")
           newly_deployed_units ++ [systemd_unit]
-        false -> 
+        false ->
           Logger.info("Failed to spin up unit #{systemd_unit.name} on cluster #{etcd_token}!")
           newly_deployed_units
       end
@@ -259,7 +259,7 @@ defmodule OpenAperture.Fleet.EtcdCluster do
       #continue to spin up new units
       cycle_unit(etcd_token, unit, cur_instance_id+1, max_instance_cnt, remaining_ports, {remaining_units, newly_deployed_units})
     end
-  end  
+  end
 
   @doc false
   # Method to tear down an existing unit within a fleet cluster
@@ -273,7 +273,7 @@ defmodule OpenAperture.Fleet.EtcdCluster do
   @spec teardown_units(String.t(), []) :: term
   defp teardown_units(etcd_token, []) do
     Logger.info ("Finished tearing down all previous units in cluster #{etcd_token}")
-  end    
+  end
 
   @doc false
   # Method to tear down an existing unit within a fleet cluster
