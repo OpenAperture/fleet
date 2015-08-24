@@ -9,6 +9,10 @@ This reusable Elixir messaging library contains several modules for working with
 * Provides an Etcd wrapper for executing Etcd calls
 * Provides a cache for storing Etcd instances
 
+## Contributing
+
+To contribute to OpenAperture development, view our [contributing guide](http://openaperture.io/dev_resources/contributing.html)
+
 ## Module Configuration
 
 The following configuration values must be defined as part of your application's environment configuration files:
