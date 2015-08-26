@@ -27,7 +27,7 @@ defmodule OpenAperture.Fleet.Mixfile do
   # Type `mix help deps` for more examples and options
   defp deps do
     [
-      {:ex_doc, "0.7.3", only: :test},
+      {:ex_doc, "0.8.4", only: :test},
       {:earmark, "0.1.17", only: :test}, 
             
       {:fleet_api, "~> 0.0.15", override: true},
